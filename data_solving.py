@@ -87,9 +87,10 @@ class Data():
                           gammas=self.gamma)
         if self.DC:
             self.M, self.F = dc.DC_solve(self.N, mode=self.mode, b=self.b,
-            msg='Solving DC-network')
+            msg='Solving DC-network with mode = "{0}"'.format(self.mode))
         else:
-            self.M, self.F = au.solve(self.N, mode=self.mode, msg='Solving non-DC-network')
+            self.M, self.F = au.solve(self.N, mode=self.mode,
+                                      msg='Solving non-DC-network with mode = "{0}"'.format(self.mode))
         # Checking if results-folder exists. Create it if not.
         if not os.path.exists('results/'):
             os.makedirs('results/')
