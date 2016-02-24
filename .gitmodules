@@ -1,0 +1,6 @@
+[submodule "aurespf"]
+	path = aurespf
+	url = https://github.com/AUESG/aurespf.git
+[submodule "regions"]
+	path = regions
+	url = https://github.com/AUESG/regions.git
