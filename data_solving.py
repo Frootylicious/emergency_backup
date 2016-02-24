@@ -11,6 +11,12 @@ matplotlib.style.use('seaborn-dark')
 
 
 class Data():
+    '''
+    Class to hold the Nodes and node objects.
+
+    If no arguments are passed, a network with alpha = 0, gamma = 1 is solved in
+    the unconstrained and synchronized flowscheme.
+    '''
 
     def __init__(self, load=True, solve=False, alpha=0.8, gamma=1,
                  mode='copper square verbose',
@@ -23,6 +29,7 @@ class Data():
         self.filename = filename
         self.DC = DC
         self.b = b
+
         # Listing all filenames and link names ---------------------------------
         self.files = ['AT.npz', 'FI.npz', 'NL.npz', 'BA.npz', 'FR.npz',
                       'NO.npz', 'BE.npz', 'GB.npz', 'PL.npz', 'BG.npz',
@@ -46,21 +53,20 @@ class Data():
                           'EST to LVA', 'LVA to LTU']
 
         if solve:
-            # print('\nSolving network with mode "{0}"'.format(self.mode))
-            # print('alpha = {0}, gamma = {1}\n'.format(self.alpha, self.gamma))
             self.solve_network()
         elif load and not solve:
             self.load_network()
 
     def find_country(self, country='DK'):
+        # Returns the county's index number in the list.
         return(self.files.index(country + '.npz'))
 
-    # Get a list of links containing a specific country
     def find_links(self, country='DK'):
+        # Get a list of links containing a specific country
         return [x for x in self.link_list if country in x]
 
-    # Get the specific link index
     def find_link(self, link_str):
+        # Get the specific link index
         try:
             return(self.link_list.index(link_str))
         except:
@@ -80,12 +86,11 @@ class Data():
                           alphas=self.alpha,
                           gammas=self.gamma)
         if self.DC:
-            print('Solving DC-network with "{0}" and beta = {1}.'.format(self.mode,
-                                                                      self.b))
-            self.M, self.F = dc.DC_solve(self.N, mode=self.mode, b=self.b)
+            self.M, self.F = dc.DC_solve(self.N, mode=self.mode, b=self.b,
+            msg='Solving DC-network')
         else:
-            print('Solving non-DC-network with "{0}".'.format(self.mode))
-            self.M, self.F = au.solve(self.N, mode=self.mode)
+            self.M, self.F = au.solve(self.N, mode=self.mode, msg='Solving non-DC-network')
+        # Checking if results-folder exists. Create it if not.
         if not os.path.exists('results/'):
             os.makedirs('results/')
         self.M.save_nodes(filename=self.filename + '_N')
@@ -101,4 +106,3 @@ class Data():
                           prefix='ISET_country_')
         self.links = np.load(F_name)
         self.F = self.links.f.arr_0
-        # N2 = np.load('./results/test_result.npz')
