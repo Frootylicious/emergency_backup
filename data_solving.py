@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import regions.classes as cl
 import aurespf.solvers as au
 import aurespf.DCsolvers as dc
+import regions.tools as to
 import os
 import matplotlib
 matplotlib.style.use('seaborn-dark')
@@ -14,20 +15,22 @@ class Data():
     '''
     Class to hold the Nodes and node objects.
 
-    If no arguments are passed, a network with alpha = 0, gamma = 1 is solved in
+    If no arguments are passed, a network with a = 0, gamma = 1 is solved in
     the unconstrained and synchronized flowscheme.
     '''
 
-    def __init__(self, load=True, solve=False, alpha=0.8, gamma=1,
+    def __init__(self, load=True, solve=False, a=0.80, g=1.00,
                  mode='copper square verbose',
                  filename='test_result',
                  DC=False,
-                 b=1.0):
-        self.alpha = alpha
-        self.gamma = gamma
+                 constrained=False,
+                 b=1.00):
+        self.a = a
+        self.g = g
         self.mode = mode
         self.filename = filename
         self.DC = DC
+        self.constrained = constrained
         self.b = b
 
         # Listing all filenames and link names ---------------------------------
@@ -73,8 +76,6 @@ class Data():
             print('Link "' + link_str + '''" doesn't exist''')
 
     ## SOLVE -------------------------------------------------------------------
-    # linear = localized
-    # square = synchronized
     def solve_network(self):
         F_name = 'results/' + self.filename + '_F.npz'
         self.N = cl.Nodes(admat='./settings/eadmat.txt',
@@ -83,14 +84,57 @@ class Data():
                           files=self.files,
                           load_filename=None,
                           full_load=False,
-                          alphas=self.alpha,
-                          gammas=self.gamma)
-        if self.DC:
-            self.M, self.F = dc.DC_solve(self.N, mode=self.mode, b=self.b,
-            msg='Solving DC-network with mode = "{0}"'.format(self.mode))
+                          alphas=self.a,
+                          gammas=self.g)
+        msg = ('{0} {1}-network with mode = {2}\nALPHA = {3:.2f}, GAMMA = {4:.2f}'
+                ', BETA = {5:.2f}\n')
+
+
+        if self.constrained:
+            # Need to calculate h0. If the file is not calculated - do it.
+            mode = ['square' if 'square' in self.mode else 'linear'][0]
+            copper_file = 'data/copperflows/copperflow_a{0:.2f}_g{1:.2f}.npy'
+            if not os.path.isfile(copper_file.format(self.a, self.g)):
+                print("Couldn't find file '{0}' - solving it first and"
+                        " saving...").format(copper_file.format(self.a, self.g))
+                msgCopper = ('unconstrained DC-network with mode = "{0}"\nALPHA ='
+                        ' {1:.2f}, GAMMA = {2:.2f}').format(mode, self.a, self.g)
+                M_copperflows, F_copperflows = dc.DC_solve(self.N,
+                                                           mode=mode,
+                                                           msg=msgCopper)
+                np.save(copper_file.format(self.a, self.g),
+                                    F_copperflows)
+                print('Saved copper flows to file:{0}'.format(copper_file.format(self.a, self.g)))
+
+            h0 = to.get_quant_caps(filename=copper_file.format(self.a, self.g))
+            msg_constrained = msg.format('constrained',
+                                         'DC',
+                                         mode,
+                                         self.a,
+                                         self.g,
+                                         self.b)
+            self.M, self.F = dc.DC_solve(self.N, h0=h0, b=self.b, mode=mode,
+                                         msg=msg_constrained)
+
+        elif not self.constrained and self.DC:
+            self.M, self.F = dc.DC_solve(self.N,
+                                         mode=self.mode,
+                                         msg=msg.format('unconstrained',
+                                                        'DC',
+                                                        self.mode,
+                                                        self.a,
+                                                        self.g,
+                                                        self.b))
+
         else:
             self.M, self.F = au.solve(self.N, mode=self.mode,
-                                      msg='Solving non-DC-network with mode = "{0}"'.format(self.mode))
+                                      msg=msg.format('unconstrained',
+                                                        'non-DC',
+                                                        self.mode,
+                                                        self.a,
+                                                        self.g,
+                                                        self.b))
+
         # Checking if results-folder exists. Create it if not.
         if not os.path.exists('results/'):
             os.makedirs('results/')
