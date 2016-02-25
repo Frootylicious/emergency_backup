@@ -21,7 +21,8 @@ class Data():
                  filename='test_result',
                  DC=False,
                  constrained=False,
-                 b=1.00):
+                 b=1.00,
+                 save=True):
         self.a = a
         self.g = g
         self.mode = mode
@@ -29,6 +30,7 @@ class Data():
         self.DC = DC
         self.constrained = constrained
         self.b = b
+        self.save = save
 
         # Listing all filenames and link names ---------------------------------
         self.files = ['AT.npz', 'FI.npz', 'NL.npz', 'BA.npz', 'FR.npz',
@@ -135,8 +137,9 @@ class Data():
         # Checking if results-folder exists. Create it if not.
         if not os.path.exists('results/'):
             os.makedirs('results/')
-        self.M.save_nodes(filename=self.filename + '_N')
-        np.savez(F_name, self.F)
+        if self.save:
+            self.M.save_nodes(filename=self.filename + '_N')
+            np.savez(F_name, self.F)
 
     ## LOAD --------------------------------------------------------------------
     def load_network(self):
