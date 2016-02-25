@@ -1,14 +1,11 @@
  # -*- coding: utf8 -*-
 from __future__ import division
 import numpy as np
-import matplotlib.pyplot as plt
 import regions.classes as cl
 import aurespf.solvers as au
 import aurespf.DCsolvers as dc
 import regions.tools as to
 import os
-import matplotlib
-matplotlib.style.use('seaborn-dark')
 
 
 class Data():
@@ -86,13 +83,13 @@ class Data():
                           full_load=False,
                           alphas=self.a,
                           gammas=self.g)
-        msg = ('{0} {1}-network with mode = {2}\nALPHA = {3:.2f}, GAMMA = {4:.2f}'
+        msg = ('{0} {1}-network with mode = "{2}"\nALPHA = {3:.2f}, GAMMA = {4:.2f}'
                 ', BETA = {5:.2f}\n')
 
 
         if self.constrained:
             # Need to calculate h0. If the file is not calculated - do it.
-            mode = ['square' if 'square' in self.mode else 'linear'][0]
+            mode = 'square' if 'square' in self.mode else 'linear'
             copper_file = 'data/copperflows/copperflow_a{0:.2f}_g{1:.2f}.npy'
             if not os.path.isfile(copper_file.format(self.a, self.g)):
                 print("Couldn't find file '{0}' - solving it first and"
