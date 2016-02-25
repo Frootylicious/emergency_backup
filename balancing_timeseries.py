@@ -12,7 +12,16 @@ TODO:
 
 
 def get_B(values):
+    # Set up the Nodes-object
+    a = values[0]
+    g = values[1]
+    b = values[2]
+    constrained = values[3]
+    DC = values[4]
+    mode = values[5]
     # Checking if the file already exists. In this case - skip it.
+    str_constrained = 'c' if constrained else 'u'
+    str_lin_syn = 's' if 'square' in mode else 'l'
     filename = ('results/balancing/'
                 '{0}_{1}_a{2:.2f}_g{3:.2f}_b{4:.2f}.npz').format(str_constrained,
                                                                  str_lin_syn,
@@ -22,13 +31,6 @@ def get_B(values):
         print('file: "{0}" already exists - skipping.'.format(filename))
         return
 
-    # Set up the Nodes-object
-    a = values[0]
-    g = values[1]
-    b = values[2]
-    constrained = values[3]
-    DC = values[4]
-    mode = values[5]
     data = Data(solve=True,
                 a=a,
                 g=g,
@@ -47,8 +49,6 @@ def get_B(values):
     if not os.path.exists('results/balancing'):
         os.makedirs('results/balancing')
     # Save variable.
-    str_constrained = 'c' if constrained else 'u'
-    str_lin_syn = 's' if 'square' in mode else 'l'
 
     np.savez_compressed(filename, balancing_timeseries)
     print("Saved balancing to file: '{0}'".format(filename))
@@ -84,9 +84,9 @@ class  BalancingCalculation():
         pool.join()
 
 if __name__ == '__main__':
-    alpha_list = np.linspace(0, 1, 5)
-    gamma_list = np.linspace(0, 2, 5)
-    beta_list = np.linspace(0, 1, 5)
+    alpha_list = np.linspace(0, 1, 1)
+    gamma_list = np.linspace(0, 2, 1)
+    beta_list = np.linspace(0, 1, 1)
     lol = BalancingCalculation(alpha_list = alpha_list,
                                gamma_list = gamma_list,
                                beta_list=beta_list,
