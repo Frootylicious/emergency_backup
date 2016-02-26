@@ -3,8 +3,8 @@ This repo calculates the size of an emergency backup storage for an electricity 
 
 ## Run
 * To run this you need the folder called `data/`
-* To install get this repo with dependencies: `git clone --recursive
-https://github.com/frootylicious/emergency_backup.git`
+* To install get this repo with dependencies:
+`git clone --recursive https://github.com/frootylicious/emergency_backup.git`
 
 
 
