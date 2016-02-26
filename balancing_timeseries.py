@@ -12,6 +12,18 @@ TODO:
 
 
 def get_B(values):
+    '''
+    Function needed for the multiprocessing. 
+
+    The variables in "values" are packed together to enable multiprocessing.
+    values:
+        0: alpha [float]
+        1: gamma [float]
+        2: beta [float]
+        3: constraned [True/False]
+        4: DC [True/False]
+        5: mode [string] ('linear'/'square')
+    '''
     # Set up the Nodes-object
     a = values[0]
     g = values[1]
@@ -19,18 +31,23 @@ def get_B(values):
     constrained = values[3]
     DC = values[4]
     mode = values[5]
-    # Checking if the file already exists. In this case - skip it.
+    # Setting the naming. 'c' for constrained, 'u' for unconstrained.
+    # 's' for synchronized/square and 'l' for localized/linear.
     str_constrained = 'c' if constrained else 'u'
     str_lin_syn = 's' if 'square' in mode else 'l'
+    # The complete filename.
     filename = ('results/balancing/'
                 '{0}_{1}_a{2:.2f}_g{3:.2f}_b{4:.2f}.npz').format(str_constrained,
                                                                  str_lin_syn,
                                                                  a, g, b)
 
+    # Checking if the file already exists. In this case - skip it.
     if os.path.isfile(filename):
         print('file: "{0}" already exists - skipping.'.format(filename))
         return
 
+    # Instantiating class Data. No save is needed, as we only want the
+    # balancing.
     data = Data(solve=True,
                 a=a,
                 g=g,
@@ -49,7 +66,6 @@ def get_B(values):
     if not os.path.exists('results/balancing'):
         os.makedirs('results/balancing')
     # Save variable.
-
     np.savez_compressed(filename, balancing_timeseries)
     print("Saved balancing to file: '{0}'".format(filename))
 
@@ -71,15 +87,18 @@ class  BalancingCalculation():
 
     def run(self):
         '''
-        Runs multiprocessing on number of cores - 2.
+        Runs multiprocessing on number of cores - 1.
         '''
         cores = mp.cpu_count()
-        pool = mp.Pool(cores - 2)
+        pool = mp.Pool(cores - 1)
         s = 'Running multiprocessing with {0} jobs on {1} cores.'
         print(s.format(len(self.alpha_list) * len(self.gamma_list) * len(beta_list), cores))
-        pool.map(get_B, product(self.alpha_list, self.gamma_list,
-                                self.beta_list, [self.constrained],
-                                [self.DC], [self.mode]))
+        pool.map(get_B, product(self.alpha_list, 
+                                self.gamma_list,
+                                self.beta_list, 
+                                [self.constrained],
+                                [self.DC], 
+                                [self.mode]))
         pool.close()
         pool.join()
 

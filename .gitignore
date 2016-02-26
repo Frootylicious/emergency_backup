@@ -5,6 +5,8 @@ data/
 *.png
 *.npz
 test*
+output.txt
+nohup.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
