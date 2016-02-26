@@ -5,6 +5,7 @@ data/
 *.png
 *.npz
 test*
+TODO.txt
 output.txt
 nohup.out
 

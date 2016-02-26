@@ -103,12 +103,12 @@ class  BalancingCalculation():
         pool.join()
 
 if __name__ == '__main__':
-    alpha_list = np.linspace(0, 1, 1)
-    gamma_list = np.linspace(0, 2, 1)
+    alpha_list = np.linspace(0, 1, 11)
+    gamma_list = np.linspace(0, 2, 11)
     beta_list = np.linspace(0, 1, 1)
     lol = BalancingCalculation(alpha_list = alpha_list,
                                gamma_list = gamma_list,
                                beta_list=beta_list,
-                               constrained=True,
-                               mode='square')
+                               constrained=False,
+                               mode='linear')
     lol.run()

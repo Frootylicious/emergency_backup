@@ -249,7 +249,7 @@ class BackupEurope(object):
 
 
 if __name__ == '__main__':
-    iset = '/home/simon/Dropbox/Root/Data/ISET/'
-    B = BackupEurope('balancing/', iset)
+    iset = 'data/'
+    B = BackupEurope('results/balancing/', iset)
     B.plot_avg_backups('DK')
 
