@@ -80,7 +80,7 @@ class BackupEurope(object):
             if g not in gamma_values:
                 gamma_values.append(g)
             if b not in beta_values:
-                beta_values.append(g)
+                beta_values.append(b)
             if c and 'c' not in c_u:
                 c_u.append('c')
             elif u and 'u' not in c_u:
