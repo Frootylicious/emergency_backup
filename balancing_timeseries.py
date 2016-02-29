@@ -1,4 +1,4 @@
- # -*- coding: utf8 -*-
+#! /usr/bin/env python
 import numpy as np
 from data_solving import Data
 from itertools import product

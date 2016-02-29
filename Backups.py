@@ -19,21 +19,14 @@ TODO:
 
 class BackupEurope(object):
     """ Backup docstring"""
-    def __init__(self, path, ISET_path):
+    def __init__(self, path, ISET_path, constr = 'u', flowscheme = 's'):
         "docstring"
         self.path = path
         self.ISET_path = ISET_path
-        (self.alpha_values, 
-         self.gamma_values, 
-         self.beta_values, 
-         self.c_and_u, 
-         self.l_and_s, 
-         agbcl) = self._read_numbers_from_files()
-        self.agbcl_list = sorted(agbcl, key=lambda agbcl: (agbcl[0], 
-                                                           agbcl[1],
-                                                           agbcl[2], 
-                                                           agbcl[3], 
-                                                           agbcl[4]))
+        self.combinations = self._read_from_file()
+        self.flowscheme = flowscheme
+        self.constr = constr
+        self.alpha_values, self.gamma_values, self.beta_values = self._generate_a_g_b_values()
         self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
                           'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                           'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
@@ -43,6 +36,32 @@ class BackupEurope(object):
                       for node in range(len(self.countries))]
 
     # -- Private methods --
+    def _read_from_file(self):
+        filename_list = os.listdir(self.path)
+        combinations = []
+        for name in filename_list:
+            combinations.append((name[0],
+                                name[2],
+                                float(name[5:9]),
+                                float(name[11:15]),
+                                 float(name[17:21])))
+        return combinations
+
+    def _generate_a_g_b_values(self):
+        a = []
+        g = []
+        b = []
+        for touple in self.combinations:
+            if touple[0] == self.constr and touple[1] == self.flowscheme:
+                if not touple[2] in a:
+                    a.append(touple[2])
+                if not touple[3] in g:
+                    g.append(touple[3])
+                if not touple[4] in b:
+                    b.append(touple[4])
+        return a, g, b
+
+    
     def _read_numbers_from_files(self):
         """
         File names follow the convention:
@@ -101,7 +120,7 @@ class BackupEurope(object):
                              c_u,
                              l_s)))
 
-    def _quantile(self, quantile, dataset, cutzeros=True):
+    def _quantile(self, quantile, dataset, cutzeros=False):
         """
         Takes a list of numbers, converts it to a list without zeros
         and returns the value of the 99% quantile.
@@ -120,12 +139,22 @@ class BackupEurope(object):
                 return bin_edges[-index]
 
     def _storage_needs(self, backup, quantile):
+        """
+        Arguments
+        ---------
+        backup:
+        A timeseries of backups for a given node in the network
+
+        quantile:
+        Eg. 99% quantile
+        """
         storage = np.zeros(len(backup))
+        q = self._quantile(quantile, backup)
         for index, val in enumerate(backup):
-            if val >= quantile:
-                storage[index] = storage[index] - (val - quantile)
+            if val >= q:
+                storage[index] = storage[index] - (val - q)
             else:
-                storage[index] = storage[index] + (quantile - val)
+                storage[index] = storage[index] + (q - val)
                 if storage[index] > 0:
                     storage[index] = 0
         return -min(storage), storage
@@ -138,18 +167,24 @@ class BackupEurope(object):
         For each country the emergency capacities are saved
         to file save_path/country_alpha_gamma_caps.npz
         """
-        caps = np.zeros((len(self.alpha_values), len(self.gamma_values)))
+        # Make sure the right folder exists. If not - create it.
+        if not os.path.exists(save_path + 'emergency_caps/'):
+            os.makedirs(save_path + 'emergency_caps/')
+        caps = -np.ones((len(self.alpha_values), len(self.gamma_values)))
         country = self.country_dict[country]
-        for index, (a, g) in enumerate(self.agbcl_list):
+        for index, (c, f, a, g, b) in enumerate(self.combinations):
             sys.stdout.write('alpha = %.2f, gamma = %.2f\r' % ( a, g))
             sys.stdout.flush()
             #print('alpha = %.2f, gamma = %.2f' % ( a, g))
+            print self.alpha_values
             ia, ig = divmod(index, len(self.alpha_values))
-            backup = np.load('%s%.2f_%.2f.npz' % (self.path, a, g))['arr_0'][country]
-            q = self._quantile(99, backup, cutzeros=True)
-            caps[ia, ig], storage = self._storage_needs(backup, q)
-            np.savez_compressed('%s%s_%.2f_%.2f_caps.npz' % (save_path, self.countries[country], a, g)
-                                , caps = caps[ia, ig])
+            backup = np.load('%s%s_%s_a%.2f_g%.2f_b%.2f.npz'
+                             % (self.path, c, f, a, g, b))['arr_0'][country]            
+            caps[ia, ig], storage = self._storage_needs(backup, 99)
+            np.savez_compressed('%s%s_%s_a%.2f_g%.2f_b%.2f_%s_caps.npz'
+                                % (save_path + 'emergency_caps/',
+                                   c, f, a, g, b, self.countries[country]),
+                                caps = caps[ia, ig])
         return caps
 
     def _avg_backup(self, country, alpha, gamma):
@@ -304,7 +339,8 @@ class BackupEurope(object):
 
 
 if __name__ == '__main__':
-    iset = 'data/'
-    B = BackupEurope('results/balancing/', iset)
+    iset = r'/home/simon/Dropbox/Root/Data/ISET/'
+    B = BackupEurope('results/balancing/', iset, constr='c', flowscheme='s')
+    B._find_caps('DK')
 #     B.plot_avg_backups('DK')
 
