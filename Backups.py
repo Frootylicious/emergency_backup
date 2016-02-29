@@ -7,6 +7,15 @@ import colormaps as cmaps
 
 import sys
 
+'''
+TODO:
+    The different a/g/b are stored correctly. Now we need to find out how to
+    represent the data with constrained/unconstrained.
+
+    We probably need to be able to choose what kind of attributes, we want to
+    look at (constrained/unconstrained/linear/square).
+'''
+
 
 class BackupEurope(object):
     """ Backup docstring"""
@@ -14,8 +23,17 @@ class BackupEurope(object):
         "docstring"
         self.path = path
         self.ISET_path = ISET_path
-        self.alpha_values, self.gamma_values, ag = self._read_a_g_from_files()
-        self.ag_list = sorted(ag, key=lambda ag: (ag[0], ag[1]))
+        (self.alpha_values, 
+         self.gamma_values, 
+         self.beta_values, 
+         self.c_and_u, 
+         self.l_and_s, 
+         agbcl) = self._read_numbers_from_files()
+        self.agbcl_list = sorted(agbcl, key=lambda agbcl: (agbcl[0], 
+                                                           agbcl[1],
+                                                           agbcl[2], 
+                                                           agbcl[3], 
+                                                           agbcl[4]))
         self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
                           'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                           'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
@@ -25,26 +43,63 @@ class BackupEurope(object):
                       for node in range(len(self.countries))]
 
     # -- Private methods --
-    def _read_a_g_from_files(self):
+    def _read_numbers_from_files(self):
         """
-        Assumes filenames of the form x.xx_y.yy.npz, where x.xx is the alpha value
-        and y.yy is the gamma value.
+        File names follow the convention:
+        A_B_a.aa_g.gg_b.bb.npz
+        A is either 'c' or 'u' for constrained/unconstrained
+        B is either 'l' or 's' for linear/square (localized/synchronized flow scheme)
+        a.aa is the alfa value
+        g.gg is the gamma value
+        b.bb is the beta value
+
 
         Return
         ------
-        A list of touples containing each combination of (alpha, gamma) in the filenames
+        A list of touples containing each combination of (alpha, gamma, beta) in the filenames
         """
         filename_list = os.listdir(self.path)
         alpha_values = []
         gamma_values = []
+        beta_values = []
+        c_u = []
+        l_s= []
         for name in filename_list:
-            a = float(name[:4])
-            g = float(name[5:9])
+            c = 'c' in name
+            u = 'u' in name
+            l = 'l' in name
+            s = 's' in name
+            a_index = name.find('a')
+            g_index = name.find('g')
+            b_index = name.find('b')
+            a = float(name[a_index + 1: a_index + 5])
+            g = float(name[g_index + 1: g_index + 5])
+            b = float(name[b_index + 1: b_index + 5])
             if a not in alpha_values:
                 alpha_values.append(a)
             if g not in gamma_values:
                 gamma_values.append(g)
-        return alpha_values, gamma_values, list(product(alpha_values, gamma_values))
+            if b not in beta_values:
+                beta_values.append(g)
+            if c and 'c' not in c_u:
+                c_u.append('c')
+            elif u and 'u' not in c_u:
+                c_u.append('u')
+            if l and 'l' not in l_s:
+                l_s.append('l')
+            elif s and 's' not in l_s:
+                l_s.append('s')
+
+        return (alpha_values, 
+                gamma_values, 
+                beta_values,
+                c_u,
+                l_s,
+                list(product(alpha_values, 
+                             gamma_values, 
+                             beta_values,
+                             c_u,
+                             l_s)))
 
     def _quantile(self, quantile, dataset, cutzeros=True):
         """
@@ -85,7 +140,7 @@ class BackupEurope(object):
         """
         caps = np.zeros((len(self.alpha_values), len(self.gamma_values)))
         country = self.country_dict[country]
-        for index, (a, g) in enumerate(self.ag_list):
+        for index, (a, g) in enumerate(self.agbcl_list):
             sys.stdout.write('alpha = %.2f, gamma = %.2f\r' % ( a, g))
             sys.stdout.flush()
             #print('alpha = %.2f, gamma = %.2f' % ( a, g))
@@ -109,19 +164,19 @@ class BackupEurope(object):
     def get_caps(self, country, save_path='results/'):
                 
         # Finds the difference between two consecutive alpha and gamma values
-        a, g = self.ag_list[0]
-        for pair in self.ag_list:
+        a, g = self.agbcl_list[0]
+        for pair in self.agbcl_list:
             if pair[0] != a:
                 a_diff = pair[0]
                 break
-        for pair in self.ag_list:
+        for pair in self.agbcl_list:
             if pair[1] != g:
                 g_diff = pair[1]
                 break
 
         # Setting up alpha and gamma values for use with np.pcolormesh()
-        a_list = [a for (a, g) in self.ag_list]
-        g_list = [g for (a, g) in self.ag_list]
+        a_list = [a for (a, g) in self.agbcl_list]
+        g_list = [g for (a, g) in self.agbcl_list]
         a, g = np.mgrid[slice(min(a_list), max(a_list) + 2*a_diff, a_diff),
                         slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
 
@@ -134,19 +189,19 @@ class BackupEurope(object):
 
     def get_caps_europe(self, save_path='results/'):
         # Finds the difference between two consecutive alpha and gamma values
-        a, g = self.ag_list[0]
-        for pair in self.ag_list:
+        a, g = self.agbcl_list[0]
+        for pair in self.agbcl_list:
             if pair[0] != a:
                 a_diff = pair[0]
                 break
-        for pair in self.ag_list:
+        for pair in self.agbcl_list:
             if pair[1] != g:
                 g_diff = pair[1]
                 break
 
         # Setting up alpha and gamma values for use with np.pcolormesh()
-        a_list = [a for (a, g) in self.ag_list]
-        g_list = [g for (a, g) in self.ag_list]
+        a_list = [a for (a, g) in self.agbcl_list]
+        g_list = [g for (a, g) in self.agbcl_list]
         a, g = np.mgrid[slice(min(a_list), max(a_list) + 2*a_diff, a_diff),
                         slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
 
@@ -201,24 +256,24 @@ class BackupEurope(object):
 
     def get_avg_backups(self, country):
         # Finds the difference between two consecutive alpha and gamma values
-        a, g = self.ag_list[0]
-        for pair in self.ag_list:
+        a, g = self.agbcl_list[0]
+        for pair in self.agbcl_list:
             if pair[0] != a:
                 a_diff = pair[0]
                 break
-        for pair in self.ag_list:
+        for pair in self.agbcl_list:
             if pair[1] != g:
                 g_diff = pair[1]
                 break
 
         # Setting up alpha and gamma values for use with np.pcolormesh()
-        a_list = [a for (a, g) in self.ag_list]
-        g_list = [g for (a, g) in self.ag_list]
+        a_list = [a for (a, g) in self.agbcl_list]
+        g_list = [g for (a, g) in self.agbcl_list]
         a, g = np.mgrid[slice(min(a_list), max(a_list) + 2*a_diff, a_diff),
                         slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
 
         avg_backups = np.zeros((len(self.alpha_values), len(self.gamma_values)))
-        for index, (a, g) in enumerate(self.ag_list):            
+        for index, (a, g) in enumerate(self.agbcl_list):            
             ia, ig = divmod(index, len(self.alpha_values))
             avg_backups[ia, ig] = self._avg_backup(country, a, g)
 
@@ -251,5 +306,5 @@ class BackupEurope(object):
 if __name__ == '__main__':
     iset = 'data/'
     B = BackupEurope('results/balancing/', iset)
-    B.plot_avg_backups('DK')
+#     B.plot_avg_backups('DK')
 
