@@ -28,7 +28,6 @@ class BackupEurope(object):
         self.combinations = self._read_from_file()
         self.flowscheme = flowscheme
         self.constr = constr
-        self.alpha_values, self.gamma_values, self.beta_values = self._get_agb_values()
         self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
                 'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                 'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
@@ -39,88 +38,63 @@ class BackupEurope(object):
 
         # -- Private methods --
     def _read_from_file(self):
+        '''
+        Returns a list of the values present in the files in the form:
+        [(c, f, a, g, b)]
+        '''
         filename_list = os.listdir(self.path)
         combinations = []
         for name in filename_list:
-            combinations.append((name[0],
-                name[2],
-                float(name[5:9]),
-                float(name[11:15]),
-                float(name[17:21])))
-            return combinations
-
-    def _get_agb_values(self):
-        a = []
-        g = []
-        b = []
-        for tuple in self.combinations:
-            if tuple[0] == self.constr and tuple[1] == self.flowscheme:
-                if not tuple[2] in a:
-                    a.append(tuple[2])
-                if not tuple[3] in g:
-                    g.append(tuple[3])
-                if not tuple[4] in b:
-                    b.append(tuple[4])
-        return a, g, b
+            combinations.append({'c':name[0],
+                                 'f':name[2],
+                                 'a':float(name[5:9]),
+                                 'g':float(name[11:15]),
+                                 'b':float(name[17:21])})
+        return combinations
 
 
-#     def _read_numbers_from_files(self):
-#         """
-#         File names follow the convention:
-#         C_F_aA.AA_gG.GG_bB.BB.npz
-#         C is either 'c' or 'u' for constrained/unconstrained
-#         F is either 'l' or 's' for linear/square (localized/synchronized flow scheme)
-#         A.AA is the alfa value
-#         G.GG is the gamma value
-#         B.BB is the beta value
-# 
-# 
-#         Return
-#         ------
-#         A list of tuples containing each combination of (alpha, gamma, beta) in the filenames
-#         """
-#         filename_list = os.listdir(self.path)
-#         alpha_values = []
-#         gamma_values = []
-#         beta_values = []
-#         c_u = []
-#         l_s= []
-#         for name in filename_list:
-#             c = 'c' in name
-#             u = 'u' in name
-#             l = 'l' in name
-#             s = 's' in name
-#             a_index = name.find('a')
-#             g_index = name.find('g')
-#             b_index = name.find('b')
-#             a = float(name[a_index + 1: a_index + 5])
-#             g = float(name[g_index + 1: g_index + 5])
-#             b = float(name[b_index + 1: b_index + 5])
-#             if a not in alpha_values:
-#                 alpha_values.append(a)
-#             if g not in gamma_values:
-#                 gamma_values.append(g)
-#             if b not in beta_values:
-#                 beta_values.append(b)
-#             if c and 'c' not in c_u:
-#                 c_u.append('c')
-#             elif u and 'u' not in c_u:
-#                 c_u.append('u')
-#             if l and 'l' not in l_s:
-#                 l_s.append('l')
-#             elif s and 's' not in l_s:
-#                 l_s.append('s')
-# 
-#         return (alpha_values, 
-#                 gamma_values, 
-#                 beta_values,
-#                 c_u,
-#                 l_s,
-#                 list(product(alpha_values, 
-#                              gamma_values, 
-#                              beta_values,
-#                              c_u,
-#                              l_s)))
+    def _get_chosen_combinations(self, **kwargs):
+        '''
+        Function that extracts the wanted files in the self.combinations list.
+        For instance all the files in the synchronized flow scheme can be found
+        by:
+            self.get_chosen_combinations(f='s').
+
+        All unconstrained files with a gamma = 1.00 can be found by:
+            self.get_chosen_combinations(c='u', g=1.00)
+
+        returns a list of dictionaries with the desired values.
+        '''
+        def check_in_dict(dic, kwargs):
+            for (name, value) in kwargs.items():
+                if not dic[name] == value:
+                    return False
+            return True
+        chosen_combinations = []
+        for combination in self.combinations:
+            if check_in_dict(combination, kwargs):
+                chosen_combinations.append(combination)
+        return chosen_combinations
+
+
+#     def _get_agb_values(self):
+#         '''
+#         Get lists with the given alpha, gamma and beta values with the chosen
+#         constraint and flow scheme.
+#         '''
+#         a = []
+#         g = []
+#         b = []
+#         for tuple in self.combinations:
+#             if tuple[0] == self.constr and tuple[1] == self.flowscheme:
+#                 if not tuple[2] in a:
+#                     a.append(tuple[2])
+#                 if not tuple[3] in g:
+#                     g.append(tuple[3])
+#                 if not tuple[4] in b:
+#                     b.append(tuple[4])
+#         return a, g, b
+
 
     def _quantile(self, quantile, dataset, cutzeros=False):
         """
@@ -140,7 +114,8 @@ class BackupEurope(object):
                 #print 'Found %.3f quantile' % (1 - q)
                 return bin_edges[-index]
 
-    def _storage_needs(self, backup, quantile):
+
+    def _storage_needs(self, backup_timeseries, quantile):
         """
         Arguments
         ---------
@@ -150,9 +125,9 @@ class BackupEurope(object):
         quantile:
         Eg. 99% quantile
         """
-        storage = np.zeros(len(backup))
-        q = self._quantile(quantile, backup)
-        for index, val in enumerate(backup):
+        storage = np.zeros(len(backup_timeseries))
+        q = self._quantile(quantile, backup_timeseries)
+        for index, val in enumerate(backup_timeseries):
             if val >= q:
                 storage[index] = storage[index] - (val - q)
             else:
@@ -160,6 +135,25 @@ class BackupEurope(object):
                 if storage[index] > 0:
                     storage[index] = 0
         return -min(storage), storage
+
+
+
+
+
+    def _calculate_caps(self, country,
+            save_path='results/emergency_capacities'):
+        if not os.path.exists(save_path):
+            os.mkdirs(save_path)
+        country = self.country_dict[country]
+        load_str = '{0}{1}_{2}_a{3:.2f}_g{4:.2f}_b{5:.2f}.npz'
+        for index, (c, f, a, g, b) in enumerate(self.combinations):
+            backup = np.load(load_str.format(self.path, c, f, a, g, b))['arr_0'][country]
+
+
+
+
+
+
 
     def _find_caps(self, country, save_path='results/'):
         """
@@ -356,6 +350,6 @@ if __name__ == '__main__':
     #     iset = r'/home/simon/Dropbox/Root/Data/ISET/'
     iset = 'data/'
     B = BackupEurope('results/balancing/', iset, constr='c', flowscheme='s')
-    B._find_caps('DK')
+#     B._find_caps('DK')
 #     B.plot_avg_backups('DK')
 
