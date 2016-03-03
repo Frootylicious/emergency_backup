@@ -21,16 +21,17 @@ TODO:
 
 class BackupEurope(object):
     """ Backup docstring"""
-    def __init__(self, path='results/balancing', ISET_path='data/', constr='u', flowscheme='s'):
+    def __init__(self, path='results/balancing', ISET_path='data/'):
         "docstring"
         self.path = path
         self.ISET_path = ISET_path
-        self.combinations = self._read_from_file()
-        self.flowscheme = flowscheme
-        self.constr = constr
+        # Saving all combinations present from files.
+        self.all_combinations = self._read_from_file()
+        self.chosen_combinations = self._get_chosen_combinations()
+        self.file_string = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}.npz'
         self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
-                'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
-                'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
+                          'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
+                          'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
         self.country_dict = dict(zip(self.countries, list(range(len(self.countries)))))
         self.loads = [np.load('%sISET_country_%s.npz'\
                 % (self.ISET_path, self.countries[node]))['L']\
@@ -39,23 +40,24 @@ class BackupEurope(object):
         # -- Private methods --
     def _read_from_file(self):
         '''
-        Returns a list of the values present in the files in the form:
-        [(c, f, a, g, b)]
+        Returns a list of dictionaries with the values present in the files in the form:
+            [{'c':'u', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00},
+             {'c':'c', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00}]
         '''
         filename_list = os.listdir(self.path)
-        combinations = []
+        all_combinations = []
         for name in filename_list:
-            combinations.append({'c':name[0],
-                                 'f':name[2],
-                                 'a':float(name[5:9]),
-                                 'g':float(name[11:15]),
-                                 'b':float(name[17:21])})
-        return combinations
+            all_combinations.append({'c':name[0],
+                                     'f':name[2],
+                                     'a':float(name[5:9]),
+                                     'g':float(name[11:15]),
+                                     'b':float(name[17:21])})
+        return all_combinations
 
 
     def _get_chosen_combinations(self, **kwargs):
         '''
-        Function that extracts the wanted files in the self.combinations list.
+        Function that extracts the wanted files in the self.all_combinations list.
         For instance all the files in the synchronized flow scheme can be found
         by:
             self.get_chosen_combinations(f='s').
@@ -64,36 +66,24 @@ class BackupEurope(object):
             self.get_chosen_combinations(c='u', g=1.00)
 
         returns a list of dictionaries with the desired values.
+        For instance:
+            [{'c':'u', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00},
+             {'c':'c', 'f':'s', 'a':0.80, 'g':1.00, 'b':0.50}]
         '''
-        def check_in_dict(dic, kwargs):
+        def _check_in_dict(dic, kwargs):
+            # Returns false if one of the kwargs supplied differ from the dic.
             for (name, value) in kwargs.items():
                 if not dic[name] == value:
                     return False
             return True
         chosen_combinations = []
-        for combination in self.combinations:
-            if check_in_dict(combination, kwargs):
+        for combination in self.all_combinations:
+            if _check_in_dict(combination, kwargs):
                 chosen_combinations.append(combination)
+        if len(chosen_combinations) == 0:
+            raise ValueError('No files with {0} found!'.format(kwargs))
+        self.chosen_combinations = chosen_combinations
         return chosen_combinations
-
-
-#     def _get_agb_values(self):
-#         '''
-#         Get lists with the given alpha, gamma and beta values with the chosen
-#         constraint and flow scheme.
-#         '''
-#         a = []
-#         g = []
-#         b = []
-#         for tuple in self.combinations:
-#             if tuple[0] == self.constr and tuple[1] == self.flowscheme:
-#                 if not tuple[2] in a:
-#                     a.append(tuple[2])
-#                 if not tuple[3] in g:
-#                     g.append(tuple[3])
-#                 if not tuple[4] in b:
-#                     b.append(tuple[4])
-#         return a, g, b
 
 
     def _quantile(self, quantile, dataset, cutzeros=False):
@@ -138,19 +128,37 @@ class BackupEurope(object):
 
 
 
+    def _calculate_all_caps(self, save_path='results/emergency_capacities/', quantile=99):
+        '''
+        Function that calculates emergency storage capacities for all countries
+        in the files given by self.chosen_combinations and saves them to files.
 
+        Saves in the form:
+        EC_{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}.npy
 
-    def _calculate_caps(self, country,
-            save_path='results/emergency_capacities'):
+        '''
+        # Check if path exists. Create it if not.
         if not os.path.exists(save_path):
-            os.mkdirs(save_path)
-        country = self.country_dict[country]
-        load_str = '{0}{1}_{2}_a{3:.2f}_g{4:.2f}_b{5:.2f}.npz'
-        for index, (c, f, a, g, b) in enumerate(self.combinations):
-            backup = np.load(load_str.format(self.path, c, f, a, g, b))['arr_0'][country]
+            os.mkdir(save_path)
+        # Looping over all countries
+        for index, combination in enumerate(self.chosen_combinations):
 
+            # Check if file already exists. Only do calculation if it does.
+            if os.path.isfile(save_path + 'EC_' +
+                    self.file_string.format(**combination)):
+                print('EC-file {0} already exists - skipping.'.format(combination))
+            else:
 
-
+                combination_caps = np.zeros(len(self.countries))
+                backup = np.load(self.path +
+                        self.file_string.format(**combination))['arr_0']
+                for i, country_backup in enumerate(backup):
+                    combination_caps[i] = self._storage_needs(country_backup,
+                            quantile)[0]
+                np.savez(save_path + 'EC_' +
+                        self.file_string.format(**combination), combination_caps)
+                print('Saved EC-file: {0}'.format(combination))
+        return
 
 
 
@@ -168,14 +176,14 @@ class BackupEurope(object):
             os.makedirs(save_path + 'emergency_caps/')
         caps = -np.ones((len(self.alpha_values), len(self.gamma_values)))
         country = self.country_dict[country]
-        for index, (c, f, a, g, b) in enumerate(self.combinations):
+        for index, (c, f, a, g, b) in enumerate(self.all_combinations):
             sys.stdout.write('alpha = %.2f, gamma = %.2f\r' % ( a, g))
             sys.stdout.flush()
             #print('alpha = %.2f, gamma = %.2f' % ( a, g))
             print self.alpha_values
             ia, ig = divmod(index, len(self.alpha_values))
             backup = np.load('%s%s_%s_a%.2f_g%.2f_b%.2f.npz'
-                    % (self.path, c, f, a, g, b))['arr_0'][country]            
+                    % (self.path, c, f, a, g, b))['arr_0'][country]
             caps[ia, ig], storage = self._storage_needs(backup, 99)
             np.savez_compressed('%s%s_%s_a%.2f_g%.2f_b%.2f_%s_caps.npz'
                     % (save_path + 'emergency_caps/',
@@ -183,12 +191,12 @@ class BackupEurope(object):
                     caps = caps[ia, ig])
             return caps
 
-    def _avg_backup(self, country, alpha, gamma, beta):
+    def _avg_backup(self, country, alpha, gamma, beta, constraint, flowscheme):
         country = self.country_dict[country]
         load_str = '{0}{1}_{2}_a{3:.2f}_g{4:.2f}_b{5:.2f}.npz'
         backup = np.load(load_str.format(self.path,
-            self.constr,
-            self.flowscheme,
+            constr,
+            flowscheme,
             alpha,
             gamma,
             beta))['arr_0'][country]
@@ -316,7 +324,7 @@ class BackupEurope(object):
                 slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
 
         avg_backups = np.zeros((len(self.alpha_values), len(self.gamma_values)))
-        for index, (a, g) in enumerate(self.agbcl_list):            
+        for index, (a, g) in enumerate(self.agbcl_list):
             ia, ig = divmod(index, len(self.alpha_values))
             avg_backups[ia, ig] = self._avg_backup(country, a, g)
 
@@ -348,8 +356,7 @@ class BackupEurope(object):
 
 if __name__ == '__main__':
     #     iset = r'/home/simon/Dropbox/Root/Data/ISET/'
-    iset = 'data/'
-    B = BackupEurope('results/balancing/', iset, constr='c', flowscheme='s')
+    B = BackupEurope('results/balancing/', 'data/')
 #     B._find_caps('DK')
 #     B.plot_avg_backups('DK')
 
