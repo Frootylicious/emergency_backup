@@ -162,35 +162,6 @@ class BackupEurope(object):
 
 
 
-
-    def _find_caps(self, country, save_path='results/'):
-        """
-        Finds the emergency capacities for a country for every alpha gamma pair and arranges them
-        in an array for use with np.pcolormesh()
-
-        For each country the emergency capacities are saved
-        to file save_path/country_alpha_gamma_caps.npz
-        """
-        # Make sure the right folder exists. If not - create it.
-        if not os.path.exists(save_path + 'emergency_caps/'):
-            os.makedirs(save_path + 'emergency_caps/')
-        caps = -np.ones((len(self.alpha_values), len(self.gamma_values)))
-        country = self.country_dict[country]
-        for index, (c, f, a, g, b) in enumerate(self.all_combinations):
-            sys.stdout.write('alpha = %.2f, gamma = %.2f\r' % ( a, g))
-            sys.stdout.flush()
-            #print('alpha = %.2f, gamma = %.2f' % ( a, g))
-            print self.alpha_values
-            ia, ig = divmod(index, len(self.alpha_values))
-            backup = np.load('%s%s_%s_a%.2f_g%.2f_b%.2f.npz'
-                    % (self.path, c, f, a, g, b))['arr_0'][country]
-            caps[ia, ig], storage = self._storage_needs(backup, 99)
-            np.savez_compressed('%s%s_%s_a%.2f_g%.2f_b%.2f_%s_caps.npz'
-                    % (save_path + 'emergency_caps/',
-                        c, f, a, g, b, self.countries[country]),
-                    caps = caps[ia, ig])
-            return caps
-
     def _avg_backup(self, country, alpha, gamma, beta, constraint, flowscheme):
         country = self.country_dict[country]
         load_str = '{0}{1}_{2}_a{3:.2f}_g{4:.2f}_b{5:.2f}.npz'
@@ -211,6 +182,7 @@ class BackupEurope(object):
 #         return np.mean(backup)
 
 
+## LAV ALT HERFRA IGEN MED DE NYE FEATURES. ------------------------------------
     # -- Public methods --
     def get_caps(self, country, save_path='results/'):
 
