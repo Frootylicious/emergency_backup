@@ -128,58 +128,89 @@ class BackupEurope(object):
 
 
 
-    def _calculate_all_caps(self, save_path='results/emergency_capacities/', quantile=99):
+    def _calculate_all_EC(self, save_path='results/emergency_capacities/', quantile=99):
         '''
         Function that calculates emergency storage capacities for all countries
         in the files given by self.chosen_combinations and saves them to files.
+
+        The saved file is a 30*2 numpy array with the emergency backup capacity
+        in row 0 and the average backup in row 2.
 
         Saves in the form:
         EC_{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}.npy
 
         '''
+        # Looping over all countries
+        for index, combination in enumerate(self.chosen_combinations):
+            self._calculate_single_EC(combination)
+        return
+
+
+    def _calculate_single_EC(self, combination_dict,
+        save_path='results/emergency_capacities/', quantile=99):
         # Check if path exists. Create it if not.
         if not os.path.exists(save_path):
             os.mkdir(save_path)
-        # Looping over all countries
-        for index, combination in enumerate(self.chosen_combinations):
-
-            # Check if file already exists. Only do calculation if it does.
-            if os.path.isfile(save_path + 'EC_' +
-                    self.file_string.format(**combination)):
-                print('EC-file {0} already exists - skipping.'.format(combination))
-            else:
-
-                combination_caps = np.zeros(len(self.countries))
-                backup = np.load(self.path +
-                        self.file_string.format(**combination))['arr_0']
-                for i, country_backup in enumerate(backup):
-                    combination_caps[i] = self._storage_needs(country_backup,
-                            quantile)[0]
-                np.savez(save_path + 'EC_' +
-                        self.file_string.format(**combination), combination_caps)
-                print('Saved EC-file: {0}'.format(combination))
+        if os.path.isfile(save_path + 'EC_' +
+                self.file_string.format(**combination_dict)):
+            print('EC-file {0} already exists - skipping.'.format(combination_dict))
+        else:
+            combination_caps = np.zeros((len(self.countries), 2))
+            backup = np.load(self.path +
+                    self.file_string.format(**combination_dict))['arr_0']
+            for i, country_backup in enumerate(backup):
+                combination_caps[i, 0] = self._storage_needs(country_backup,
+                        quantile)[0]
+                combination_caps[i, 1] = np.mean(country_backup)
+            np.savez(save_path + 'EC_' +
+                    self.file_string.format(**combination_dict), combination_caps)
+            print('Saved EC-file: {0}'.format(combination_dict))
         return
 
 
 
-    def _avg_backup(self, country, alpha, gamma, beta, constraint, flowscheme):
-        country = self.country_dict[country]
-        load_str = '{0}{1}_{2}_a{3:.2f}_g{4:.2f}_b{5:.2f}.npz'
-        backup = np.load(load_str.format(self.path,
-            constr,
-            flowscheme,
-            alpha,
-            gamma,
-            beta))['arr_0'][country]
-        return np.mean(backup)
 
-
-#     def _avg_backup(self, country, alpha, gamma):
-#         sys.stdout.write('alpha = %.2f, gamma = %.2f\r' % (alpha, gamma))
-#         sys.stdout.flush()
-#         country = self.country_dict[country]
-#         backup = np.load('%s%.2f_%.2f.npz' % (self.path, alpha, gamma))['arr_0'][country]
-#         return np.mean(backup)
+    def plot_thing(self, f='s', c='c', b=1.00):
+        alpha_list = []
+        gamma_list = []
+        self._get_chosen_combinations(f=f, c=c, b=b)
+        self._calculate_all_EC()
+        for combination in self.chosen_combinations:
+            if combination['a'] not in alpha_list:
+                alpha_list.append(combination['a'])
+            if combination['g'] not in gamma_list:
+                gamma_list.append(combination['g'])
+        da = np.diff(alpha_list)[0]
+        dg = np.diff(gamma_list)[0]
+        EC_matrix = np.zeros((len(alpha_list), len(gamma_list)))
+        load_str = 'results/emergency_capacities/'
+        load_str += 'EC_' + self.file_string
+        sum_loads = np.mean([np.sum(x) for x in self.loads])
+        for i, a in enumerate(alpha_list):
+            for j, g in enumerate(gamma_list):
+                EC = np.load(load_str.format(**{'f':'s', 
+                                                             'c':'c',
+                                                             'b':b, 
+                                                             'a':a, 
+                                                             'g':g}))['arr_0']
+                EC_matrix[i, j] = np.sum(EC[:,0]) / sum_loads
+        a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2*da, da),
+                        slice(min(gamma_list), max(gamma_list) + 2*dg, dg)]
+        plt.register_cmap(name='viridis', cmap=cmaps.viridis)
+        plt.set_cmap(cmaps.viridis)
+        plt.pcolormesh(a, g, EC_matrix, cmap='viridis')
+        plt.title(r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle\ L_{EU} \right\rangle}$', fontsize = 20)
+#         plt.title(r'$\frac{\sum_n\ \mathcal{K}^E_n}{\left\langle\sum_n\ L_n\right\rangle}$', fontsize = 20)
+        plt.xlabel(r'$\alpha$', fontsize = 20)
+        plt.ylabel(r'$\gamma$', fontsize = 20)
+        plt.axis([a.min(), a.max(), g.min(), g.max()])
+        plt.yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
+        plt.colorbar()
+#         plt.show()
+        if not os.path.exists('results/figures/'):
+            os.mkdir('results/figures/')
+        plt.savefig('results/figures/lol.png')
+        return
 
 
 ## LAV ALT HERFRA IGEN MED DE NYE FEATURES. ------------------------------------
