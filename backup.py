@@ -148,8 +148,10 @@ class BackupEurope(object):
         return
 
 
-    def _calculate_single_EC(self, combination_dict,
-        save_path='results/emergency_capacities/', quantile=99):
+    def _calculate_single_EC(self, 
+                             combination_dict,
+                             save_path='results/emergency_capacities/', 
+                             quantile=99):
         # Check if path exists. Create it if not.
         if not os.path.exists(save_path):
             os.mkdir(save_path)
@@ -172,60 +174,68 @@ class BackupEurope(object):
 
 
 
-    def plot_thing(self, f='s', c='c', b=0.00):
+    def plot_colormap(self, f='s', c='c', b=0.50):
+        # Preparing the lists for alpha and gamma values.
         alpha_list = []
         gamma_list = []
+        # Only get the combinations with the wanted f and c.
         self._get_chosen_combinations(f=f, c=c, b=b)
+        # Calculate the emergency capacities for the wanted values.
         self._calculate_all_EC()
+        # This loop appends all values of alpha and gamma into the prepared
+        # lists.
         for combination in self.chosen_combinations:
             if combination['a'] not in alpha_list:
                 alpha_list.append(combination['a'])
             if combination['g'] not in gamma_list:
                 gamma_list.append(combination['g'])
-        self.alpha_list = alpha_list.sort()
-        self.gamma_list = gamma_list.sort()
+        # We have to sort the lists to make the correct grids.
+        alpha_list.sort()
+        gamma_list.sort()
+        # Finding the space between first and second value in the lists.
         da = float('{0:.2f}'.format(np.diff(alpha_list)[0]))
         dg = float('{0:.2f}'.format(np.diff(gamma_list)[0]))
-        self.da = da
-        self.dg = dg
         EC_matrix = np.zeros((len(alpha_list), len(gamma_list)))
         load_str = 'results/emergency_capacities/'
         load_str += 'EC_' + self.file_string
-        sum_loads = np.mean([np.sum(x) for x in self.loads])
+        # Calculating the mean of the sum of the loads for europe.
+        mean_sum_loads = np.mean([np.sum(x) for x in self.loads])
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
-                EC = np.load(load_str.format(**{'f':'s', 
-                                                'c':'c',
-                                                'b':b, 
-                                                'a':a, 
-                                                'g':g}))['arr_0']
-                EC_matrix[i, j] = np.sum(EC[:,0]) / sum_loads
+                load_dict = {'f':f, 'c':c, 'b':b, 'a':a, 'g':g}
+                EC = np.load(load_str.format(**load_dict))['arr_0']
+                EC_matrix[i, j] = np.sum(EC[:,0]) / mean_sum_loads
+        # Creating the plot
         a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2 * da, da),
                         slice(min(gamma_list), max(gamma_list) + 2 * dg, dg)]
-        self.a = a
-        self.g = g
-        self.EC_matrix = EC_matrix
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
         plt.register_cmap(name='viridis', cmap=cmaps.viridis)
         plt.set_cmap(cmaps.viridis)
-        plt.pcolormesh(a, g, EC_matrix, cmap='viridis')
-        plt.title(r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle\ L_{EU}' \
-                  r'\right\rangle}$ constrained synchronized flow $\beta=0.00$', fontsize=20, y=1.08)
-#         plt.title(r'$\frac{\sum_n\ \mathcal{K}^E_n}{\left\langle\sum_n\ L_n\right\rangle}$', fontsize = 20)
-        plt.xlabel(r'$\alpha$', fontsize = 20)
-        plt.ylabel(r'$\gamma$', fontsize = 20)
-        plt.axis([a.min(), a.max(), g.min(), g.max()])
-        plt.yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
-        plt.colorbar()
+        cms = ax.pcolormesh(a, g, EC_matrix, cmap='viridis')
+        str1 = r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle L_{EU}\right\rangle}$'
+        str2 = 'constrained' if c=='c' else 'unconstrained'
+        str3 = 'synchronized' if f=='s' else 'localized'
+        str4 = str1 + ' with ' + str3 + ' ' + str2 + r' flow $\beta={0}$'.format(b)
+        ax.set_title(str4, y=1.08, fontsize=15)
+        ax.set_xlabel(r'$\alpha$', fontsize = 20)
+        ax.set_ylabel(r'$\gamma$', fontsize = 20)
+        ax.set_xlim([a.min(), a.max()])
+        ax.set_ylim([g.min(), g.max()])
+        ax.set_yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
+        fig.colorbar(cms)
         plt.tight_layout()
-#         plt.show()
         if not os.path.exists('results/figures/'):
             os.mkdir('results/figures/')
-        plt.savefig('results/figures/lol3.png')
+        save_str = 'colormap_b{0:.2f}.png'.format(b)
+        plt.savefig('results/figures/' + save_str)
+        plt.close()
         return
 
 
 if __name__ == '__main__':
     B = BackupEurope('results/balancing/', 'data/')
+    B.plot_colormap()
 #     B._find_caps('DK')
 #     B.plot_avg_backups('DK')
 
