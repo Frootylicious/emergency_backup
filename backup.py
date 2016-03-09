@@ -213,22 +213,31 @@ class BackupEurope(object):
         plt.register_cmap(name='viridis', cmap=cmaps.viridis)
         plt.set_cmap(cmaps.viridis)
         cms = ax.pcolormesh(a, g, EC_matrix, cmap='viridis')
+        # Prepare the strings.
         str1 = r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle L_{EU}\right\rangle}$'
         str2 = 'constrained' if c=='c' else 'unconstrained'
         str3 = 'synchronized' if f=='s' else 'localized'
         str4 = str1 + ' with ' + str3 + ' ' + str2 + r' flow $\beta={0}$'.format(b)
         ax.set_title(str4, y=1.08, fontsize=15)
-        ax.set_xlabel(r'$\alpha$', fontsize = 20)
-        ax.set_ylabel(r'$\gamma$', fontsize = 20)
+        ax.set_xlabel(r'$\alpha$', fontsize=20)
+        ax.set_ylabel(r'$\gamma$', fontsize=20)
         ax.set_xlim([a.min(), a.max()])
         ax.set_ylim([g.min(), g.max()])
-        ax.set_yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
+        # Setting ticks in the middle of the squares.
+        xticks = np.array(alpha_list) + 0.5 * da
+        yticks = np.array(gamma_list) + 0.5 * dg
+        xlabels = [str(x) for x in alpha_list]
+        ylabels = [str(y) for y in gamma_list]
+        ax.xaxis.set(ticks=xticks, ticklabels=xlabels)
+        ax.yaxis.set(ticks=yticks, ticklabels=ylabels)
         fig.colorbar(cms)
         plt.tight_layout()
+        # Checking if the folder exists - create it if it doesn't
         if not os.path.exists('results/figures/'):
             os.mkdir('results/figures/')
-        save_str = 'colormap_b{0:.2f}.png'.format(b)
+        save_str = 'colormapAG_b{0:.2f}.png'.format(b)
         plt.savefig('results/figures/' + save_str)
+        print('Saved file "{0}".'.format(save_str))
         plt.close()
         return
 
@@ -236,6 +245,4 @@ class BackupEurope(object):
 if __name__ == '__main__':
     B = BackupEurope('results/balancing/', 'data/')
     B.plot_colormap()
-#     B._find_caps('DK')
-#     B.plot_avg_backups('DK')
 
