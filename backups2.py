@@ -172,7 +172,7 @@ class BackupEurope(object):
 
 
 
-    def plot_thing(self, f='s', c='c', b=1.00):
+    def plot_thing(self, f='s', c='c', b=0.00):
         alpha_list = []
         gamma_list = []
         self._get_chosen_combinations(f=f, c=c, b=b)
@@ -182,10 +182,12 @@ class BackupEurope(object):
                 alpha_list.append(combination['a'])
             if combination['g'] not in gamma_list:
                 gamma_list.append(combination['g'])
-        self.alpha_list = alpha_list
-        self.gamma_list = gamma_list
-        da = np.diff(alpha_list)[0]
-        dg = np.diff(gamma_list)[0]
+        self.alpha_list = alpha_list.sort()
+        self.gamma_list = gamma_list.sort()
+        da = float('{0:.2f}'.format(np.diff(alpha_list)[0]))
+        dg = float('{0:.2f}'.format(np.diff(gamma_list)[0]))
+        self.da = da
+        self.dg = dg
         EC_matrix = np.zeros((len(alpha_list), len(gamma_list)))
         load_str = 'results/emergency_capacities/'
         load_str += 'EC_' + self.file_string
@@ -198,13 +200,16 @@ class BackupEurope(object):
                                                 'a':a, 
                                                 'g':g}))['arr_0']
                 EC_matrix[i, j] = np.sum(EC[:,0]) / sum_loads
-        a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2*da, da),
-                        slice(min(gamma_list), max(gamma_list) + 2*dg, dg)]
+        a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2 * da, da),
+                        slice(min(gamma_list), max(gamma_list) + 2 * dg, dg)]
+        self.a = a
+        self.g = g
+        self.EC_matrix = EC_matrix
         plt.register_cmap(name='viridis', cmap=cmaps.viridis)
         plt.set_cmap(cmaps.viridis)
         plt.pcolormesh(a, g, EC_matrix, cmap='viridis')
         plt.title(r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle\ L_{EU}' \
-                  r'\right\rangle}$', fontsize=20, y=1.08)
+                  r'\right\rangle}$ constrained synchronized flow $\beta=0.00$', fontsize=20, y=1.08)
 #         plt.title(r'$\frac{\sum_n\ \mathcal{K}^E_n}{\left\langle\sum_n\ L_n\right\rangle}$', fontsize = 20)
         plt.xlabel(r'$\alpha$', fontsize = 20)
         plt.ylabel(r'$\gamma$', fontsize = 20)
@@ -215,7 +220,7 @@ class BackupEurope(object):
 #         plt.show()
         if not os.path.exists('results/figures/'):
             os.mkdir('results/figures/')
-        plt.savefig('results/figures/lol.png')
+        plt.savefig('results/figures/lol3.png')
         return
 
 
