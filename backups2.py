@@ -1,4 +1,6 @@
 #! /usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
 import os, os.path
 import numpy as np
 from itertools import product
@@ -180,6 +182,8 @@ class BackupEurope(object):
                 alpha_list.append(combination['a'])
             if combination['g'] not in gamma_list:
                 gamma_list.append(combination['g'])
+        self.alpha_list = alpha_list
+        self.gamma_list = gamma_list
         da = np.diff(alpha_list)[0]
         dg = np.diff(gamma_list)[0]
         EC_matrix = np.zeros((len(alpha_list), len(gamma_list)))
@@ -189,23 +193,25 @@ class BackupEurope(object):
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
                 EC = np.load(load_str.format(**{'f':'s', 
-                                                             'c':'c',
-                                                             'b':b, 
-                                                             'a':a, 
-                                                             'g':g}))['arr_0']
+                                                'c':'c',
+                                                'b':b, 
+                                                'a':a, 
+                                                'g':g}))['arr_0']
                 EC_matrix[i, j] = np.sum(EC[:,0]) / sum_loads
         a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2*da, da),
                         slice(min(gamma_list), max(gamma_list) + 2*dg, dg)]
         plt.register_cmap(name='viridis', cmap=cmaps.viridis)
         plt.set_cmap(cmaps.viridis)
         plt.pcolormesh(a, g, EC_matrix, cmap='viridis')
-        plt.title(r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle\ L_{EU} \right\rangle}$', fontsize = 20)
+        plt.title(r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle\ L_{EU}' \
+                  r'\right\rangle}$', fontsize=20, y=1.08)
 #         plt.title(r'$\frac{\sum_n\ \mathcal{K}^E_n}{\left\langle\sum_n\ L_n\right\rangle}$', fontsize = 20)
         plt.xlabel(r'$\alpha$', fontsize = 20)
         plt.ylabel(r'$\gamma$', fontsize = 20)
         plt.axis([a.min(), a.max(), g.min(), g.max()])
         plt.yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
         plt.colorbar()
+        plt.tight_layout()
 #         plt.show()
         if not os.path.exists('results/figures/'):
             os.mkdir('results/figures/')
@@ -213,152 +219,7 @@ class BackupEurope(object):
         return
 
 
-## LAV ALT HERFRA IGEN MED DE NYE FEATURES. ------------------------------------
-    # -- Public methods --
-    def get_caps(self, country, save_path='results/'):
-
-        # Finds the difference between two consecutive alpha and gamma values
-        a, g = self.agbcl_list[0]
-        for pair in self.agbcl_list:
-            if pair[0] != a:
-                a_diff = pair[0]
-                break
-        for pair in self.agbcl_list:
-            if pair[1] != g:
-                g_diff = pair[1]
-                break
-
-        # Setting up alpha and gamma values for use with np.pcolormesh()
-        a_list = [a for (a, g) in self.agbcl_list]
-        g_list = [g for (a, g) in self.agbcl_list]
-        a, g = np.mgrid[slice(min(a_list), max(a_list) + 2*a_diff, a_diff),
-                slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
-
-        # Get the backup capacities for the country
-        print('Calculating emergency backup capacities...')
-        print(country)
-        caps = self._find_caps(country, save_path)
-
-        return a, g, caps
-
-    def get_caps_europe(self, save_path='results/'):
-        # Finds the difference between two consecutive alpha and gamma values
-        a, g = self.agbcl_list[0]
-        for pair in self.agbcl_list:
-            if pair[0] != a:
-                a_diff = pair[0]
-                break
-        for pair in self.agbcl_list:
-            if pair[1] != g:
-                g_diff = pair[1]
-                break
-
-        # Setting up alpha and gamma values for use with np.pcolormesh()
-        a_list = [a for (a, g) in self.agbcl_list]
-        g_list = [g for (a, g) in self.agbcl_list]
-        a, g = np.mgrid[slice(min(a_list), max(a_list) + 2*a_diff, a_diff),
-                slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
-
-        # Get the backup capacities for the countries
-        print('Calculating emergency backup capacities...')
-        caps = np.zeros((len(self.alpha_values), len(self.gamma_values)))
-        for country in self.countries:
-            print(country)
-            caps += self._find_caps(country, save_path)
-
-        # Get the loads sum
-        loadSum = np.zeros(len(self.loads[21]))
-        for l in xrange(len(self.loads)):
-            print l
-            loadSum += self.loads[l]
-
-        return a, g, caps, loadSum
-
-
-    def plot_caps(self, country, save_path='results/'):
-
-        a, g, caps = self.get_caps(country, save_path)
-
-        # PLOT ALL THE THINGS
-        plt.register_cmap(name='viridis', cmap=cmaps.viridis)
-        plt.set_cmap(cmaps.viridis)
-        plt.pcolormesh(a, g, caps/np.mean(self.loads[self.country_dict[country]]))
-        plt.title(r'$%s\ \frac{\mathcal{K}^E}{\left\langle L\right\rangle}$' % country, fontsize = 20)
-        plt.xlabel(r'$\alpha$', fontsize = 20)
-        plt.ylabel(r'$\gamma$', fontsize = 20)
-        plt.axis([a.min(), a.max(), g.min(), g.max()])
-        plt.yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
-        plt.colorbar()
-        plt.show()
-
-    def plot_caps_europe(self, save_path='results/'):
-
-        a, g, caps, loadSum = self.get_caps_europe(country, save_path)
-
-        # PLOT ALL THE THINGS
-        plt.register_cmap(name='viridis', cmap=cmaps.viridis)
-        plt.set_cmap(cmaps.viridis)
-        plt.pcolormesh(a, g, caps/np.mean(loadSum))
-        plt.title(r'$\frac{\sum_n\ \mathcal{K}^E_n}{\left\langle\sum_n\ L_n\right\rangle}$', fontsize = 20)
-        plt.xlabel(r'$\alpha$', fontsize = 20)
-        plt.ylabel(r'$\gamma$', fontsize = 20)
-        plt.axis([a.min(), a.max(), g.min(), g.max()])
-        plt.yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
-        plt.colorbar()
-        plt.show()
-
-
-    def get_avg_backups(self, country):
-        # Finds the difference between two consecutive alpha and gamma values
-        a, g = self.agbcl_list[0]
-        for pair in self.agbcl_list:
-            if pair[0] != a:
-                a_diff = pair[0]
-                break
-        for pair in self.agbcl_list:
-            if pair[1] != g:
-                g_diff = pair[1]
-                break
-
-        # Setting up alpha and gamma values for use with np.pcolormesh()
-        a_list = [a for (a, g) in self.agbcl_list]
-        g_list = [g for (a, g) in self.agbcl_list]
-        a, g = np.mgrid[slice(min(a_list), max(a_list) + 2*a_diff, a_diff),
-                slice(min(g_list), max(g_list) + 2*g_diff, g_diff)]
-
-        avg_backups = np.zeros((len(self.alpha_values), len(self.gamma_values)))
-        for index, (a, g) in enumerate(self.agbcl_list):
-            ia, ig = divmod(index, len(self.alpha_values))
-            avg_backups[ia, ig] = self._avg_backup(country, a, g)
-
-        return a, g, avg_backups
-
-    def plot_avg_backups(self, country):
-
-        a, g, avg_backups = self.get_avg_backups(country)
-
-        # PLOT ALL THE THINGS
-        plt.register_cmap(name='viridis', cmap=cmaps.viridis)
-        plt.set_cmap(cmaps.viridis)
-        plt.pcolormesh(a, g, avg_backups)
-        plt.title(r'%s\ $\frac{\mathcal{K}^B_n}{\left\langleL_n\right\rangle}$' % country, fontsize = 20)
-        plt.xlabel(r'$\alpha$', fontsize = 20)
-        plt.ylabel(r'$\gamma$', fontsize = 20)
-        plt.axis([a.min(), a.max(), g.min(), g.max()])
-        plt.yticks(np.arange(g.min(), g.max(), np.diff(g)[0, 0]))
-        plt.colorbar()
-        plt.show()
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-    #     iset = r'/home/simon/Dropbox/Root/Data/ISET/'
     B = BackupEurope('results/balancing/', 'data/')
 #     B._find_caps('DK')
 #     B.plot_avg_backups('DK')
