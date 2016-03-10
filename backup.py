@@ -11,13 +11,7 @@ import sys
 
 '''
 TODO:
-    The different a/g/b are stored correctly. Now we need to find out how to
-    represent the data with constrained/unconstrained.
-
-    We probably need to be able to choose what kind of attributes, we want to
-    look at (constrained/unconstrained/linear/square).
-
-    Blocks that are out-commented should now be obsolete.
+    Make the choose_combinations function able to take a range of values.
 '''
 
 
@@ -29,7 +23,7 @@ class BackupEurope(object):
         self.ISET_path = ISET_path
         # Saving all combinations present from files.
         self.all_combinations = self._read_from_file()
-        self.chosen_combinations = self._get_chosen_combinations()
+        self.chosen_combinations = self.get_chosen_combinations()
         self.file_string = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}.npz'
         self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
                           'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
@@ -57,7 +51,7 @@ class BackupEurope(object):
         return all_combinations
 
 
-    def _get_chosen_combinations(self, **kwargs):
+    def get_chosen_combinations(self, **kwargs):
         '''
         Function that extracts the wanted files in the self.all_combinations list.
         For instance all the files in the synchronized flow scheme can be found
@@ -75,7 +69,8 @@ class BackupEurope(object):
         def _check_in_dict(dic, kwargs):
             # Returns false if one of the kwargs supplied differ from the dic.
             for (name, value) in kwargs.items():
-                if not dic[name] == value:
+                value = np.array(value)
+                if not dic[name] in value:
                     return False
             return True
         chosen_combinations = []
@@ -179,7 +174,7 @@ class BackupEurope(object):
         alpha_list = []
         gamma_list = []
         # Only get the combinations with the wanted f and c.
-        self._get_chosen_combinations(f=f, c=c, b=b)
+        self.get_chosen_combinations(f=f, c=c, b=b)
         # Calculate the emergency capacities for the wanted values.
         self._calculate_all_EC()
         # This loop appends all values of alpha and gamma into the prepared
@@ -199,7 +194,10 @@ class BackupEurope(object):
         load_str = 'results/emergency_capacities/'
         load_str += 'EC_' + self.file_string
         # Calculating the mean of the sum of the loads for europe.
-        mean_sum_loads = np.mean([np.sum(x) for x in self.loads])
+#         mean_sum_loads = np.mean([np.sum(x) for x in self.loads])
+        # Load is in GW whereas balancing is in MW. Therefore I multiply with
+        # 1000
+        mean_sum_loads = np.mean(np.sum(self.loads, axis=0)) * 1000
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
                 load_dict = {'f':f, 'c':c, 'b':b, 'a':a, 'g':g}
