@@ -1,17 +1,18 @@
 #! /usr/bin/env python3
+from __future__ import division
 import matplotlib
 matplotlib.use('Agg')
+import sys
 import os, os.path
 import numpy as np
-from itertools import product
-import matplotlib.pyplot as plt
 import colormaps as cmaps
+import matplotlib.pyplot as plt
+from itertools import product
 
-import sys
 
 '''
 TODO:
-    Make the choose_combinations function able to take a range of values.
+    Find out if the load and backups are in the right units.
 '''
 
 
@@ -29,9 +30,11 @@ class BackupEurope(object):
                           'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                           'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
         self.country_dict = dict(zip(self.countries, list(range(len(self.countries)))))
-        self.loads = [np.load('%sISET_country_%s.npz'\
+        self.loads = np.array([np.load('%sISET_country_%s.npz'\
                 % (self.ISET_path, self.countries[node]))['L']\
-                for node in range(len(self.countries))]
+                for node in range(len(self.countries))])
+        # Making loads MW instead of GW
+#         self.loads *= 1000
 
         # -- Private methods --
     def _read_from_file(self):
@@ -159,39 +162,22 @@ class BackupEurope(object):
                     self.file_string.format(**combination_dict))['arr_0']
             for i, country_backup in enumerate(backup):
                 combination_caps[i, 0] = self._storage_needs(country_backup,
-                        quantile)[0]
+                                                             quantile)[0]
                 combination_caps[i, 1] = np.mean(country_backup)
             np.savez(save_path + 'EC_' +
                     self.file_string.format(**combination_dict), combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
-    def _get_alpha_gamma_list(self, f='s', c='c', b=0.50):
-        """
-        """
-        alpha_list = []
-        gamma_list = []
 
-        return alpha_list, gamma_list
-
-    def plot_colormap(self, f='s', c='c', b=0.50):
+    def plot_colormap(self, f='s', c='c', b=1.00, a_amount=3, g_amount=3):
         # Preparing the lists for alpha and gamma values.
-        alpha_list = np.linspace(0, 1, 21)
-        gamma_list = np.linspace(0, 2, 21)
+        alpha_list = np.linspace(0, 1, a_amount)
+        gamma_list = np.linspace(0, 2, g_amount)
         # Only get the combinations with the wanted f and c.
-        self.get_chosen_combinations(f=f, c=c, b=b, a=np.linspace(0, 1, 21), g=np.linspace(0,2,21))
+        self.get_chosen_combinations(f=f, c=c, b=b, a=alpha_list, g=gamma_list)
         # Calculate the emergency capacities for the wanted values.
         self._calculate_all_EC()
-        # This loop appends all values of alpha and gamma into the prepared
-        # lists.
-#         for combination in self.chosen_combinations:
-#             if combination['a'] not in alpha_list:
-#                 alpha_list.append(combination['a'])
-#             if combination['g'] not in gamma_list:
-#                 gamma_list.append(combination['g'])
-        # We have to sort the lists to make the correct grids.
-        print alpha_list
-        print gamma_list
         alpha_list.sort()
         gamma_list.sort()
         # Finding the space between first and second value in the lists.
@@ -202,10 +188,8 @@ class BackupEurope(object):
         load_str = 'results/emergency_capacities/'
         load_str += 'EC_' + self.file_string
         # Calculating the mean of the sum of the loads for europe.
-#         mean_sum_loads = np.mean([np.sum(x) for x in self.loads])
-        # Load is in GW whereas balancing is in MW. Therefore I multiply with
-        # 1000
-        mean_sum_loads = np.mean(np.sum(self.loads, axis=0)) * 1000
+        mean_sum_loads = np.mean(np.sum(self.loads, axis=0))
+        number_of_nans = 0
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
                 load_dict = {'f':f, 'c':c, 'b':b, 'a':a, 'g':g}
@@ -213,7 +197,8 @@ class BackupEurope(object):
                     EC = np.load(load_str.format(**load_dict))['arr_0']
                     EC_matrix[i, j] = np.sum(EC[:,0]) / mean_sum_loads
                 else:
-                    print("File didn't exist. Setting as NaN")
+                    number_of_nans += 1
+        print("{0} files didn't exist - set as NaN".format(number_of_nans))
         # Important to do this:
         EC_matrix = np.ma.masked_invalid(EC_matrix)
         # Creating the plot
@@ -255,7 +240,44 @@ class BackupEurope(object):
         return
 
 
+    def plot_timeseries(self):
+        fig = plt.figure()
+        ax1 = fig.add_subplot(411)
+        ax2 = fig.add_subplot(412)
+        ax3 = fig.add_subplot(413)
+        ax4 = fig.add_subplot(414)
+
+        filename = 'c_s_a0.80_g1.00_b1.00.npz'
+        country = 21
+
+        DKB = np.load('results/balancing/' + filename)
+        DKB = DKB.f.arr_0[country]
+        DK_EB = np.load('results/emergency_capacities/EC_' + filename)
+        DK_EB = DK_EB.f.arr_0[country]
+        DK = np.load('data/ISET_country_DK.npz')
+        DKW = DK.f.Gw
+        DKS = DK.f.Gs
+        DKG = DKW + DKS * 1000
+        DKL = DK.f.L * 1000
+        DKL_avg = np.mean(DKL)
+        print('Mean Balancing: ', np.mean(DKB))
+        print('Mean load: ', np.mean(DKL))
+        print('Mean total generation ', np.mean(DKG))
+        print('Emergency Backup capacity: ', DK_EB)
+        lol = DKL - DKG - DKB
+        lol[lol < 0] = 0
+
+        days = 30
+
+        ax1.plot(DKG[:days*24]/np.mean(DKL))
+        ax2.plot(DKL[:days*24]/np.mean(DKL))
+        ax3.plot(DKB[:days*24]/np.mean(DKL))
+        ax4.plot(lol[:days*24]/np.mean(DKL))
+        plt.savefig('results/figures/lol.png')
+        return
+
 if __name__ == '__main__':
     B = BackupEurope('results/balancing/', 'data/')
-#     B.plot_colormap()
+    B.plot_colormap()
+    B.plot_timeseries()
 
