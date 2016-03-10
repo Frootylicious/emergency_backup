@@ -176,20 +176,22 @@ class BackupEurope(object):
 
     def plot_colormap(self, f='s', c='c', b=0.50):
         # Preparing the lists for alpha and gamma values.
-        alpha_list = []
-        gamma_list = []
+        alpha_list = np.linspace(0, 1, 21)
+        gamma_list = np.linspace(0, 2, 21)
         # Only get the combinations with the wanted f and c.
-        self.get_chosen_combinations(f=f, c=c, b=b)
+        self.get_chosen_combinations(f=f, c=c, b=b, a=np.linspace(0, 1, 21), g=np.linspace(0,2,21))
         # Calculate the emergency capacities for the wanted values.
         self._calculate_all_EC()
         # This loop appends all values of alpha and gamma into the prepared
         # lists.
-        for combination in self.chosen_combinations:
-            if combination['a'] not in alpha_list:
-                alpha_list.append(combination['a'])
-            if combination['g'] not in gamma_list:
-                gamma_list.append(combination['g'])
+#         for combination in self.chosen_combinations:
+#             if combination['a'] not in alpha_list:
+#                 alpha_list.append(combination['a'])
+#             if combination['g'] not in gamma_list:
+#                 gamma_list.append(combination['g'])
         # We have to sort the lists to make the correct grids.
+        print alpha_list
+        print gamma_list
         alpha_list.sort()
         gamma_list.sort()
         # Finding the space between first and second value in the lists.
@@ -207,10 +209,12 @@ class BackupEurope(object):
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
                 load_dict = {'f':f, 'c':c, 'b':b, 'a':a, 'g':g}
-                EC = np.load(load_str.format(**load_dict))['arr_0']
-                EC_matrix[i, j] = np.sum(EC[:,0]) / mean_sum_loads
+                if os.path.isfile(load_str.format(**load_dict)):
+                    EC = np.load(load_str.format(**load_dict))['arr_0']
+                    EC_matrix[i, j] = np.sum(EC[:,0]) / mean_sum_loads
+                else:
+                    print("File didn't exist. Setting as NaN")
         # Important to do this:
-        EC_matrix[1,1] = np.nan
         EC_matrix = np.ma.masked_invalid(EC_matrix)
         # Creating the plot
         a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2 * da, da),
@@ -253,5 +257,5 @@ class BackupEurope(object):
 
 if __name__ == '__main__':
     B = BackupEurope('results/balancing/', 'data/')
-    B.plot_colormap()
+#     B.plot_colormap()
 
