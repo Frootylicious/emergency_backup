@@ -166,8 +166,13 @@ class BackupEurope(object):
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
+    def _get_alpha_gamma_list(self, f='s', c='c', b=0.50):
+        """
+        """
+        alpha_list = []
+        gamma_list = []
 
-
+        return alpha_list, gamma_list
 
     def plot_colormap(self, f='s', c='c', b=0.50):
         # Preparing the lists for alpha and gamma values.
@@ -190,7 +195,8 @@ class BackupEurope(object):
         # Finding the space between first and second value in the lists.
         da = float('{0:.2f}'.format(np.diff(alpha_list)[0]))
         dg = float('{0:.2f}'.format(np.diff(gamma_list)[0]))
-        EC_matrix = np.zeros((len(alpha_list), len(gamma_list)))
+        EC_matrix = np.empty((len(alpha_list), len(gamma_list)))
+        EC_matrix[:] = np.nan
         load_str = 'results/emergency_capacities/'
         load_str += 'EC_' + self.file_string
         # Calculating the mean of the sum of the loads for europe.
@@ -203,6 +209,9 @@ class BackupEurope(object):
                 load_dict = {'f':f, 'c':c, 'b':b, 'a':a, 'g':g}
                 EC = np.load(load_str.format(**load_dict))['arr_0']
                 EC_matrix[i, j] = np.sum(EC[:,0]) / mean_sum_loads
+        # Important to do this:
+        EC_matrix[1,1] = np.nan
+        EC_matrix = np.ma.masked_invalid(EC_matrix)
         # Creating the plot
         a, g = np.mgrid[slice(min(alpha_list), max(alpha_list) + 2 * da, da),
                         slice(min(gamma_list), max(gamma_list) + 2 * dg, dg)]
@@ -210,6 +219,8 @@ class BackupEurope(object):
         ax = fig.add_subplot(111)
         plt.register_cmap(name='viridis', cmap=cmaps.viridis)
         plt.set_cmap(cmaps.viridis)
+        cmap = plt.get_cmap()
+        cmap.set_bad(color='w', alpha=1.)
         cms = ax.pcolormesh(a, g, EC_matrix, cmap='viridis')
         # Prepare the strings.
         str1 = r'$\frac{\mathcal{K}^{EB}_{EU}}{\left\langle L_{EU}\right\rangle}$'
