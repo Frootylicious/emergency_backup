@@ -338,6 +338,7 @@ class BackupEurope(object):
         fig = plt.figure()
         ax = fig.add_subplot(111)
         self.get_chosen_combinations(g=gamma, b=beta, c=c, f=f)
+        self._calculate_chosen_EC()
         alpha_list = []
         EC_list = []
         filepath = 'results/emergency_capacities/EC_'
