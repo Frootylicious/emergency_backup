@@ -193,7 +193,7 @@ class BackupEurope(object):
         load_str = 'results/emergency_capacities/'
         load_str += 'EC_' + self.file_string
         # Calculating the mean of the sum of the loads for europe.
-        mean_sum_loads = np.mean(np.sum(self.loads, axis=0))
+        mean_sum_loads = np.mean(np.sum(self.loads, axis=0)) * 1000
         number_of_nans = 0
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
@@ -333,9 +333,42 @@ class BackupEurope(object):
         plt.savefig('results/figures/lol.png')
         return
 
+
+    def plot_alpha(self, gamma=1.00, beta=1.00, c='c', f='s'):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        self.get_chosen_combinations(g=gamma, b=beta, c=c, f=f)
+        alpha_list = []
+        EC_list = []
+        filepath = 'results/emergency_capacities/EC_'
+        EUL = np.array([np.load('%sISET_country_%s.npz'\
+                % (self.ISET_path, self.countries[node]))['L']\
+                for node in range(len(self.countries))])
+        EUL = np.sum(EUL, axis=0) * 1000
+        for combination in self.chosen_combinations:
+            print combination
+            alpha_list.append(combination['a'])
+            EC = np.load(filepath + self.file_string.format(**combination))
+            EC = np.mean(np.sum(EC.f.arr_0, axis=0)[0])
+            EC_list.append(EC/np.mean(EUL))
+
+        ax.plot(alpha_list, EC_list)
+        str2 = 'constrained' if c=='c' else 'unconstrained'
+        str3 = 'synchronized' if f=='s' else 'localized'
+        str4 = str3 + ' ' + str2 + r' flow $\beta={0}$'.format(beta)
+        ax.set_title(str4, y=1.08, fontsize=15)
+        ax.set_xlabel(r'$\alpha$', fontsize=20)
+        plt.tight_layout()
+        plt.subplots_adjust(left=0.15)
+        ax.set_ylabel(r'$\frac{\mathcal{K}_{EU}^{EB}}{\left\langle L_{EU}\right\rangle}$', 
+                      fontsize=20)
+        plt.savefig('results/figures/ECvsAlpha.png')
+        return
+
 if __name__ == '__main__':
-    B = BackupEurope('results/balancing', 'data/')
+    B = BackupEurope('results/balancing/', 'data/')
 #     B.plot_colormap()
 #     B.plot_timeseries()
-    B.plot_timeseries_EU()
+#     B.plot_timeseries_EU()
+    B.plot_alpha()
 
