@@ -129,9 +129,24 @@ class BackupEurope(object):
 
 
     def _calculate_all_EC(self, save_path='results/emergency_capacities/', quantile=99):
+        # Calculating all EC
+        for combination in self.all_combinations:
+            self._calculate_single_EC(combination)
+        return
+
+    def _calculate_chosen_EC(self, save_path='results/emergency_capacities/',  quantile=99):
+        # Calculating chosen EC
+        for combination in self.chosen_combinations:
+            self._calculate_single_EC(combination)
+
+
+    def _calculate_single_EC(self,
+                             combination_dict,
+                             save_path='results/emergency_capacities/',
+                             quantile=99):
         '''
         Function that calculates emergency storage capacities for all countries
-        in the files given by self.chosen_combinations and saves them to files.
+        in the file given by the combination-dictionary and saves them to files.
 
         The saved file is a 30*2 numpy array with the emergency backup capacity
         in row 0 and the average backup in row 2.
@@ -140,16 +155,6 @@ class BackupEurope(object):
         EC_{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}.npy
 
         '''
-        # Looping over all countries
-        for index, combination in enumerate(self.chosen_combinations):
-            self._calculate_single_EC(combination)
-        return
-
-
-    def _calculate_single_EC(self, 
-                             combination_dict,
-                             save_path='results/emergency_capacities/', 
-                             quantile=99):
         # Check if path exists. Create it if not.
         if not os.path.exists(save_path):
             os.mkdir(save_path)
@@ -177,7 +182,7 @@ class BackupEurope(object):
         # Only get the combinations with the wanted f and c.
         self.get_chosen_combinations(f=f, c=c, b=b, a=alpha_list, g=gamma_list)
         # Calculate the emergency capacities for the wanted values.
-        self._calculate_all_EC()
+        self._calculate_chosen_EC()
         alpha_list.sort()
         gamma_list.sort()
         # Finding the space between first and second value in the lists.
@@ -239,8 +244,7 @@ class BackupEurope(object):
         plt.close()
         return
 
-
-    def plot_timeseries(self):
+    def plot_timeseries_EU(self):
         fig = plt.figure()
         ax1 = fig.add_subplot(411)
         ax2 = fig.add_subplot(412)
@@ -248,13 +252,64 @@ class BackupEurope(object):
         ax4 = fig.add_subplot(414)
 
         filename = 'c_s_a0.80_g1.00_b1.00.npz'
-        country = 21
+
+        EUB = np.load('results/balancing/' + filename)
+        EUB = np.sum(EUB.f.arr_0, axis=0)
+        EU_EB = np.load('results/emergency_capacities/EC_' + filename)
+        EU_EB = np.sum(EU_EB.f.arr_0, axis=0)[0]
+        EU_Bq = self._quantile(99, EUB)
+        print EU_EB
+        EU = np.load('data/ISET_country_DE.npz')
+        EUW = np.array([np.load('%sISET_country_%s.npz'\
+                % (self.ISET_path, self.countries[node]))['Gw']\
+                for node in range(len(self.countries))])
+        EUS = np.array([np.load('%sISET_country_%s.npz'\
+                % (self.ISET_path, self.countries[node]))['Gs']\
+                for node in range(len(self.countries))])
+        EUW = np.sum(EUW, axis=0)
+        EUS = np.sum(EUS, axis=0)
+        EUL = np.array([np.load('%sISET_country_%s.npz'\
+                % (self.ISET_path, self.countries[node]))['L']\
+                for node in range(len(self.countries))])
+        EUL = np.sum(EUL, axis=0) * 1000
+        EUG = EUW + EUS * 1000
+        EUL_avg = np.mean(EUL)
+        print('Mean Balancing: ', np.mean(EUB)/np.mean(EUL))
+        print('Mean load: ', np.mean(EUL)/np.mean(EUL))
+        print('Mean total generation ', np.mean(EUG)/np.mean(EUL))
+        print('Emergency Backup capacity: ', EU_EB/np.mean(EUL))
+#         lol = DKL - DKG - DKB
+        lol = EUL - EUG - EU_Bq
+        lol2 = EUB - EU_Bq
+        lol[lol < 0] = 0
+
+        days = 365*7
+
+        ax1.plot(EUG[:days*24]/np.mean(EUL))
+        ax2.plot(EUL[:days*24]/np.mean(EUL))
+        ax3.plot(lol2[:days*24]/np.mean(EUL))
+        ax4.plot(lol[:days*24]/np.mean(EUL))
+        plt.savefig('results/figures/lol.png')
+        return
+
+    def plot_timeseries_country(self):
+        fig = plt.figure()
+        ax1 = fig.add_subplot(411)
+        ax2 = fig.add_subplot(412)
+        ax3 = fig.add_subplot(413)
+        ax4 = fig.add_subplot(414)
+
+        filename = 'c_s_a0.80_g1.00_b1.00.npz'
+        country = 18
 
         DKB = np.load('results/balancing/' + filename)
         DKB = DKB.f.arr_0[country]
         DK_EB = np.load('results/emergency_capacities/EC_' + filename)
+
         DK_EB = DK_EB.f.arr_0[country]
-        DK = np.load('data/ISET_country_DK.npz')
+        DK_Bq = self._quantile(99, DKB)
+        print(DK_Bq)
+        DK = np.load('data/ISET_country_DE.npz')
         DKW = DK.f.Gw
         DKS = DK.f.Gs
         DKG = DKW + DKS * 1000
@@ -264,20 +319,23 @@ class BackupEurope(object):
         print('Mean load: ', np.mean(DKL))
         print('Mean total generation ', np.mean(DKG))
         print('Emergency Backup capacity: ', DK_EB)
-        lol = DKL - DKG - DKB
+#         lol = DKL - DKG - DKB
+        lol = DKL - DKG - DK_Bq
+        lol2 = DKB - DK_Bq
         lol[lol < 0] = 0
 
-        days = 30
+        days = 60
 
         ax1.plot(DKG[:days*24]/np.mean(DKL))
         ax2.plot(DKL[:days*24]/np.mean(DKL))
-        ax3.plot(DKB[:days*24]/np.mean(DKL))
+        ax3.plot(lol2[:days*24]/np.mean(DKL))
         ax4.plot(lol[:days*24]/np.mean(DKL))
         plt.savefig('results/figures/lol.png')
         return
 
 if __name__ == '__main__':
-    B = BackupEurope('results/balancing/', 'data/')
-    B.plot_colormap()
-    B.plot_timeseries()
+    B = BackupEurope('results/balancing', 'data/')
+#     B.plot_colormap()
+#     B.plot_timeseries()
+    B.plot_timeseries_EU()
 
