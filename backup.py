@@ -353,7 +353,7 @@ class BackupEurope(object):
             EC = np.mean(np.sum(EC.f.arr_0, axis=0)[0])
             EC_list.append(EC/np.mean(EUL))
 
-        ax.plot(alpha_list, EC_list)
+        ax.plot(alpha_list, EC_list, '.k')
         str2 = 'constrained' if c=='c' else 'unconstrained'
         str3 = 'synchronized' if f=='s' else 'localized'
         str4 = str3 + ' ' + str2 + r' flow $\beta={0}$'.format(beta)
