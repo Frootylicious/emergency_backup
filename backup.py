@@ -245,11 +245,11 @@ class BackupEurope(object):
         return
 
     def plot_timeseries_EU(self):
-        fig = plt.figure()
-        ax1 = fig.add_subplot(411)
-        ax2 = fig.add_subplot(412)
-        ax3 = fig.add_subplot(413)
-        ax4 = fig.add_subplot(414)
+        fig, (ax1, ax2, ax3, ax4)  = plt.subplots(4, 1, sharex=True)
+#         ax1 = fig.add_subplot(411)
+#         ax2 = fig.add_subplot(412)
+#         ax3 = fig.add_subplot(413)
+#         ax4 = fig.add_subplot(414)
 
         filename = 'c_s_a0.80_g1.00_b1.00.npz'
 
@@ -258,7 +258,6 @@ class BackupEurope(object):
         EU_EB = np.load('results/emergency_capacities/EC_' + filename)
         EU_EB = np.sum(EU_EB.f.arr_0, axis=0)[0]
         EU_Bq = self._quantile(99, EUB)
-        print EU_EB
         EU = np.load('data/ISET_country_DE.npz')
         EUW = np.array([np.load('%sISET_country_%s.npz'\
                 % (self.ISET_path, self.countries[node]))['Gw']\
@@ -283,13 +282,18 @@ class BackupEurope(object):
         lol2 = EUB - EU_Bq
         lol[lol < 0] = 0
 
-        days = 365*7
+        days = 30
 
         ax1.plot(EUG[:days*24]/np.mean(EUL))
+        ax1.set_ylabel(r'$G_{EU}^R / \left< L_{EU} \right>$')
         ax2.plot(EUL[:days*24]/np.mean(EUL))
+        ax2.set_ylabel(r'$L_{EU} / \left< L_{EU} \right>$')
         ax3.plot(lol2[:days*24]/np.mean(EUL))
+        ax3.set_ylabel(r'$(B_{EU}-K_{EU}^B) / \left< L_{EU} \right>$')
         ax4.plot(lol[:days*24]/np.mean(EUL))
+        ax4.set_ylabel(r'$(L_{EU}-G_{EU}^R - K_{EU}^B) / \left< L_{EU} \right>$')
         plt.savefig('results/figures/lol.png')
+        plt.close()
         return
 
     def plot_timeseries_country(self):
@@ -331,6 +335,7 @@ class BackupEurope(object):
         ax3.plot(lol2[:days*24]/np.mean(DKL))
         ax4.plot(lol[:days*24]/np.mean(DKL))
         plt.savefig('results/figures/lol.png')
+        plt.close()
         return
 
 
@@ -363,12 +368,13 @@ class BackupEurope(object):
         plt.tight_layout()
         plt.subplots_adjust(left=0.15)
         plt.savefig('results/figures/ECvsAlpha.png')
+        plt.close()
         return
 
 if __name__ == '__main__':
     B = BackupEurope('results/balancing/', 'data/')
 #     B.plot_colormap()
 #     B.plot_timeseries()
-#     B.plot_timeseries_EU()
-    B.plot_alpha()
+    B.plot_timeseries_EU()
+#     B.plot_alpha()
 
