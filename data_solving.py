@@ -179,3 +179,6 @@ class Data():
                           prefix='ISET_country_')
         self.links = np.load(F_name)
         self.F = self.links.f.arr_0
+
+if __name__ == '__main__':
+    B = Data(load=True, DC=True, filename='injection')

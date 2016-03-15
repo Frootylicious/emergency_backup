@@ -1,18 +1,18 @@
 #! /usr/bin/env python3
 from __future__ import division
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import sys
 import os, os.path
 import numpy as np
 import colormaps as cmaps
 import matplotlib.pyplot as plt
 from itertools import product
+from data_solving import Data
 
 
 '''
 TODO:
-    Find out if the load and backups are in the right units.
 '''
 
 
@@ -170,7 +170,7 @@ class BackupEurope(object):
                                                              quantile)[0]
                 combination_caps[i, 1] = np.mean(country_backup)
             np.savez(save_path + 'EC_' +
-                    self.file_string.format(**combination_dict), combination_caps)
+                    self.file_string.format(**combination_dict), ombination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
@@ -245,56 +245,46 @@ class BackupEurope(object):
         return
 
     def plot_timeseries_EU(self):
-        fig, (ax1, ax2, ax3, ax4)  = plt.subplots(4, 1, sharex=True)
-#         ax1 = fig.add_subplot(411)
-#         ax2 = fig.add_subplot(412)
-#         ax3 = fig.add_subplot(413)
-#         ax4 = fig.add_subplot(414)
+        def get_avg(timeseries_matrix):
+            timeseries_sum = np.sum(timeseries_matrix, axis=0)
+            return np.mean(timeseries_sum)
 
-        filename = 'c_s_a0.80_g1.00_b1.00.npz'
+        fig, (ax)  = plt.subplots(1, 1, sharex=True)
+#         fig, (ax1, ax2, ax3, ax4)  = plt.subplots(4, 1, sharex=True)
+        B = Data(solve=True, a=0.50, g=0.50, b=0.50, filename='injection_test', constrained=True, DC=True)
+        self.B = B
 
-        EUB = np.load('results/balancing/' + filename)
-        EUB = np.sum(EUB.f.arr_0, axis=0)
+        filename = 'c_s_a0.00_g0.00_b1.00.npz'
         EU_EB = np.load('results/emergency_capacities/EC_' + filename)
-        EU_EB = np.sum(EU_EB.f.arr_0, axis=0)[0]
-        EU_Bq = self._quantile(99, EUB)
-        EU = np.load('data/ISET_country_DE.npz')
-        EUW = np.array([np.load('%sISET_country_%s.npz'\
-                % (self.ISET_path, self.countries[node]))['Gw']\
-                for node in range(len(self.countries))])
-        EUS = np.array([np.load('%sISET_country_%s.npz'\
-                % (self.ISET_path, self.countries[node]))['Gs']\
-                for node in range(len(self.countries))])
-        EUW = np.sum(EUW, axis=0)
-        EUS = np.sum(EUS, axis=0)
-        EUL = np.array([np.load('%sISET_country_%s.npz'\
-                % (self.ISET_path, self.countries[node]))['L']\
-                for node in range(len(self.countries))])
-        EUL = np.sum(EUL, axis=0) * 1000
-        EUG = EUW + EUS * 1000
-        EUL_avg = np.mean(EUL)
-        print('Mean Balancing: ', np.mean(EUB)/np.mean(EUL))
-        print('Mean load: ', np.mean(EUL)/np.mean(EUL))
-        print('Mean total generation ', np.mean(EUG)/np.mean(EUL))
-        print('Emergency Backup capacity: ', EU_EB/np.mean(EUL))
-#         lol = DKL - DKG - DKB
-        lol = EUL - EUG - EU_Bq
-        lol2 = EUB - EU_Bq
-        lol[lol < 0] = 0
+        EU_EB = EU_EB.f.arr_0[:, 0]
 
-        days = 30
+        lol = np.zeros((30, B.N[21].nhours))
 
-        ax1.plot(EUG[:days*24]/np.mean(EUL))
-        ax1.set_ylabel(r'$G_{EU}^R / \left< L_{EU} \right>$')
-        ax2.plot(EUL[:days*24]/np.mean(EUL))
-        ax2.set_ylabel(r'$L_{EU} / \left< L_{EU} \right>$')
-        ax3.plot(lol2[:days*24]/np.mean(EUL))
-        ax3.set_ylabel(r'$(B_{EU}-K_{EU}^B) / \left< L_{EU} \right>$')
-        ax4.plot(lol[:days*24]/np.mean(EUL))
-        ax4.set_ylabel(r'$(L_{EU}-G_{EU}^R - K_{EU}^B) / \left< L_{EU} \right>$')
+        for i, c in enumerate(B.N):
+#             print np.mean([c.load - c.get_solar() - c.get_wind() - c.get_import() +
+#                     c.get_export() + c.get_curtailment() - EU_KB[i][0]])
+            lol[i] = c.load - c.get_solar() - c.get_wind() - self._quantile(99,
+                    c.get_balancing()) + c.get_export() - c.get_import()
+
+        EUL_avg = np.mean(np.sum([x.load for x in B.N], axis=0))
+
+        lol2 = np.sum(lol, axis=0) / EUL_avg
+        lol2[lol2 < 0] = 0
+        ax.plot(lol2)
+        title_str = r'$\frac{L_{EU}-G_{EU}^R - K_{EU}^{B99} - I_{EU} + E_{EU}}{\left< L_{EU} \right>}$'
+        ax.set_title(title_str, fontsize=20, y=0.9, x=0.2)
+        plt.tight_layout()
+        plt.show()
         plt.savefig('results/figures/lol.png')
         plt.close()
+
+
         return
+
+
+
+
+
 
     def plot_timeseries_country(self):
         fig = plt.figure()
@@ -377,4 +367,5 @@ if __name__ == '__main__':
 #     B.plot_timeseries()
     B.plot_timeseries_EU()
 #     B.plot_alpha()
+
 
