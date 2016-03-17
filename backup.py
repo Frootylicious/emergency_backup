@@ -159,7 +159,7 @@ class BackupEurope(object):
         if not os.path.exists(save_path):
             os.mkdir(save_path)
         if os.path.isfile(save_path + 'EC_' +
-                self.N_str.format(**combination_dict)):
+                self.N_str.format(**combination_dict) + '.npz'):
             print('EC-file {0} already exists - skipping.'.format(combination_dict))
         else:
             combination_caps = np.zeros(len(self.countries))
@@ -263,7 +263,6 @@ class BackupEurope(object):
                                                                           g=g,
                                                                           b=b) + '.npz'
         K_EB = np.load(K_EB_str)
-        print(K_EB.f.arr_0)
         K_EB = sum(K_EB.f.arr_0) / EUL_avg
 
         timeseries_EU = np.sum(timeseries, axis=0) / EUL_avg
@@ -281,7 +280,7 @@ class BackupEurope(object):
         fig.text(x=0.1, y=0.7, s=txt_str1.format(K_EB), fontsize=20)
         fig.text(x=0.1, y=0.6, s=txt_str2, fontsize=15)
         plt.tight_layout()
-#         plt.show()
+        plt.show()
         plt.savefig('results/figures/timeseriesEU.png')
         plt.close()
         return
