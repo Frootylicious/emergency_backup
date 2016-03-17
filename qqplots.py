@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from os import listdir
+import regions.classes as cl
 
 def all_combinations():
     names = [name for name in listdir('./results/balancing')]
@@ -28,7 +29,12 @@ def qq_plot(country, data_touple):
                      'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                      'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
         country_dict = dict(zip(countries, list(range(len(countries)))))
-        return np.load('results/balancing/%s_%s_a%.2f_g%.2f_b%.2f.npz' % (c, f, a, g, b))['arr_0'][country_dict[country]]
+        N = cl.Nodes(load_filename='N/%s_%s_a%.2f_g%.2f_b%.2f_N.npz' % (c, f, a, g, b),
+                     files=countries,
+                     path='/home/simon/Dropbox/Root/Data/ISET/',
+                     prefix='ISET_country_')
+        return N[country_dict[country]].get_balancing()
+        #return np.load('results/balancing/%s_%s_a%.2f_g%.2f_b%.2f.npz' % (c, f, a, g, b))['arr_0'][country_dict[country]]
 
     def _lin(x, a, b):
         return a*x + b
@@ -60,6 +66,7 @@ def qq_plot(country, data_touple):
     bins = bins[cum_dens > 0.90]
     cum_df = cum_df[cum_dens > 0.90]
     cum_dens = cum_dens[cum_dens > 0.90]
+    print(cum_dens)
 
 
     # As x vs. y, we want to plot log(bins) vs. -log(-log(cum_dens))
@@ -164,11 +171,35 @@ def qq_plot(country, data_touple):
         return ((-np.log(q))**(-xi))/sigma2 + mu2
     q_bins = np.asarray([_full_inverse_GEV(q, mu2, sigma2, xi) for q in cum_dens])
     ax2.plot(q_bins, bins, 'b.', markersize=8, label='QQ')
-    ax2.plot([min(q_bins), max(q_bins)], [min(q_bins), max(q_bins)], color=orange, linewidth=2.0)
+    ax2.plot([min(q_bins), max(q_bins)], [min(bins), max(bins)], color=orange, linewidth=2.0)
+    ax2.axis([min(q_bins), max(q_bins), min(q_bins), max(q_bins)])
+    ax2.set_yticks(bins[0::len(bins)/10.0])
+    ax2.set_ylim([min(q_bins), max(q_bins)])
     ax2.set_xlabel(r'GEV quantile [GWh]', fontsize=18)
     ax2.set_ylabel(r'Observed quantile [GWh]', fontsize=18)
     ax2.grid()
     ax2.legend(loc=2)
+    ax2_new = ax2.twinx()
+    ax2_new_ticks = ax2.get_yticks()
+    ax2_new_ticks = np.asarray(ax2_new_ticks)
+    ax2_new_ticks_rounded = np.around(ax2_new_ticks, decimals=3)
+    #print(ax2_new_ticks_rounded)
+    rounded_bins = np.around(bins, decimals=3)
+    #print([cum_dens[rounded_bins == t][-1] for t in ax2_new_ticks_rounded])
+    #ax2_new_ticks = 
+    #ax2_new_ticks_ = [_GEV_cum_dens(x, mu, sigma, xi) for x in ax2_new_ticks]
+    #while np.isnan(ax2_new_ticks_[-1]):
+    #    ax2_new_ticks = 0.9999*np.asarray(ax2_new_ticks)
+    #    ax2_new_ticks_ = [_GEV_cum_dens(x, mu, sigma, xi) for x in ax2_new_ticks]
+    #ax2_new_ticks = ['%.6f' % t for t in ax2_new_ticks_]
+    #print(ax2_new_ticks_)
+    ax2_new.set_yticks(ax2.get_yticks())
+    ax2_new.set_yticklabels(['%.4f' % t for t in [cum_dens[rounded_bins == t][-1] for t in ax2_new_ticks_rounded]])
+    ax2_new.set_ylim(ax2.get_ylim())
+    ax2_new.set_ylabel('Quantile', fontsize=18)
+    
+    
+    
     fig.savefig('figures/QQ_%s_%s_%s_a%.2f_g%.2f_b%.2f.png'
                 % (country, data_touple[0], data_touple[1], data_touple[2], data_touple[3], data_touple[4]))#, bbox_tight=True)
     plt.close()
@@ -176,9 +207,6 @@ def qq_plot(country, data_touple):
     #many_gevs = np.asarray([_GEV_cum_dens(x, mu, sigma, xi) for x in np.linspace(min(bins)*0.9, max(bins), 1e6)])
     
 
-
-
-    
 if __name__ == '__main__':
     countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
                  'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
