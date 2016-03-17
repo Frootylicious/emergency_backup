@@ -20,14 +20,14 @@ TODO:
 
 class BackupEurope(object):
     """ Backup docstring"""
-    def __init__(self, path='results/N/', ISET_path='data/'):
+    def __init__(self, N_path='results/N/', ISET_path='data/'):
         "docstring"
-        self.path = path
+        self.N_path = N_path
         self.ISET_path = ISET_path
         # Saving all combinations present from files.
         self.all_combinations = self._read_from_file()
         self.chosen_combinations = self.get_chosen_combinations()
-        self.file_string = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
+        self.N_str = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
         self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
                           'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                           'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
@@ -38,14 +38,13 @@ class BackupEurope(object):
                 % (self.ISET_path, self.countries[node]))['L']\
                 for node in range(len(self.countries))])
 
-        # -- Private methods --
     def _read_from_file(self):
         '''
         Returns a list of dictionaries with the values present in the files in the form:
             [{'c':'u', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00},
              {'c':'c', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00}]
         '''
-        filename_list = os.listdir(self.path)
+        filename_list = os.listdir(self.N_path)
         all_combinations = []
         for name in filename_list:
             all_combinations.append({'c':name[0],
@@ -160,21 +159,21 @@ class BackupEurope(object):
         if not os.path.exists(save_path):
             os.mkdir(save_path)
         if os.path.isfile(save_path + 'EC_' +
-                self.file_string.format(**combination_dict)):
+                self.N_str.format(**combination_dict)):
             print('EC-file {0} already exists - skipping.'.format(combination_dict))
         else:
             combination_caps = np.zeros(len(self.countries))
-            nodes = np.load(self.path + self.file_string.format(**combination_dict) + '_N.npz')
+            nodes = np.load(self.N_path + self.N_str.format(**combination_dict) + '_N.npz')
             balancing = nodes['balancing']
             for i, country_backup in enumerate(balancing):
                 combination_caps[i] = self._storage_needs(country_backup, quantile)[0]
             np.savez(save_path + 'EC_' +
-                    self.file_string.format(**combination_dict) + '.npz', combination_caps)
+                    self.N_str.format(**combination_dict) + '.npz', combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
 
-    def plot_colormap(self, f='s', c='c', b=1.00, a_amount=6, g_amount=3):
+    def plot_colormap(self, f='s', c='c', b=1.00, a_amount=11, g_amount=11):
         # Preparing the lists for alpha and gamma values.
         alpha_list = np.linspace(0, 1, a_amount)
         gamma_list = np.linspace(0, 2, g_amount)
@@ -190,7 +189,7 @@ class BackupEurope(object):
         EC_matrix = np.empty((len(alpha_list), len(gamma_list)))
         EC_matrix[:] = np.nan
         load_str = 'results/emergency_capacities/'
-        load_str += 'EC_' + self.file_string + '.npz'
+        load_str += 'EC_' + self.N_str + '.npz'
         # Calculating the mean of the sum of the loads for europe.
         mean_sum_loads = np.mean(np.sum(self.loads, axis=0)) * 1000
         number_of_nans = 0
@@ -241,11 +240,7 @@ class BackupEurope(object):
         plt.close()
         return
 
-    def plot_timeseries_EU(self):
-        fig, (ax)  = plt.subplots(1, 1, sharex=True)
-        a = 0.80
-        g = 1.00
-        b = 1.00
+    def plot_timeseries_EU(self, a=0.80, g=1.00, b=1.00):
 #         B = Data(solve=True, a=a, g=g, b=b, constrained=True, DC=True)
         countries = [i + '.npz' for i in self.countries]
         N = cl.Nodes(load_filename='N/c_s_a0.80_g1.00_b1.00_N.npz',
@@ -260,27 +255,32 @@ class BackupEurope(object):
                     n.get_balancing()) + n.get_export() - n.get_import() + n.get_curtailment()
 
         EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
+
         K_EB = np.load('results/emergency_capacities/EC_c_s_a0.80_g1.00_b1.00.npz')
         K_EB = sum(K_EB.f.arr_0) / EUL_avg
+
         timeseries_EU = np.sum(timeseries, axis=0) / EUL_avg
         timeseries_EU[timeseries_EU < 0] = 0
         self.timeseries_EU = timeseries_EU
+
+        title_str1 = r'$\frac{\left<L_{EU}-G_{EU}^R - K_{EU}^{B99}' 
+        title_str2 = r' - I_{EU} + E_{EU}\right>}{\left< L_{EU} \right>}$'
+        txt_str1 = r'$\frac{{K_{{EU}}^{{EB}}}}{{\left<L_{{EU}}\right>}} = {0:.2f}$'
+        txt_str2 = r'$\alpha = {0}, \gamma = {1}, \beta = {2}$'.format(a, g, b)
+
+        fig, (ax)  = plt.subplots(1, 1, sharex=True)
         ax.plot(timeseries_EU)
-        title_str = r'$\frac{\left<L_{EU}-G_{EU}^R - K_{EU}^{B99} - I_{EU} + E_{EU}\right>}{\left< L_{EU} \right>}$'
-        ax.set_title(title_str, fontsize=20, y=0.9, x=0.35)
-        txt_str = r'$\frac{{K_{{EU}}^{{EB}}}}{{\left<L_{{EU}}\right>}} = {0:.2f}$'
-        fig.text(x=0.1, y=0.7, s=txt_str.format(K_EB), fontsize=20)
-        fig.text(x=0.1, y=0.6, s=r'$\alpha = {0}, \gamma = {1}, \beta = {2}$'.format(a, g, b))
+        ax.set_title(title_str1 + title_str2, fontsize=20, y=0.9, x=0.3)
+        fig.text(x=0.1, y=0.7, s=txt_str1.format(K_EB), fontsize=20)
+        fig.text(x=0.1, y=0.6, s=txt_str2, fontsize=15)
         plt.tight_layout()
 #         plt.show()
-        plt.savefig('results/figures/timeseries.png')
+        plt.savefig('results/figures/timeseriesEU.png')
         plt.close()
         return
 
 
     def plot_alpha(self, gamma=1.00, beta=1.00, c='c', f='s'):
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
         self.get_chosen_combinations(g=gamma, b=beta, c=c, f=f)
         self._calculate_chosen_EC()
         alpha_list = []
@@ -292,11 +292,12 @@ class BackupEurope(object):
         EUL = np.sum(EUL, axis=0) * 1000
         for combination in self.chosen_combinations:
             alpha_list.append(combination['a'])
-            EC = np.load(filepath + self.file_string.format(**combination))
-            EC = np.mean(np.sum(EC.f.arr_0, axis=0)[0])
+            EC = np.load(filepath + self.N_str.format(**combination) + '.npz')
+            EC = np.mean(np.sum(EC.f.arr_0, axis=0))
             EC_list.append(EC/np.mean(EUL))
 
         legend = r'$\frac{\mathcal{K}_{EU}^{EB}}{\left\langle L_{EU}\right\rangle}$'
+        fig, (ax)  = plt.subplots(1, 1, sharex=True)
         ax.plot(alpha_list, EC_list, '.k', label=legend, ms=10)
         str2 = 'constrained' if c=='c' else 'unconstrained'
         str3 = 'synchronized' if f=='s' else 'localized'
@@ -306,7 +307,7 @@ class BackupEurope(object):
         ax.legend(loc=2)
         plt.tight_layout()
         plt.subplots_adjust(left=0.15)
-        plt.savefig('results/figures/ECvsAlpha.png')
+        plt.savefig('results/figures/EB_Alpha.png')
         plt.close()
         return
 
