@@ -10,7 +10,7 @@ import os
 
 class Data():
     '''
-    Class to hold the Nodes and Flow objects. 
+    Class to hold the Nodes and Flow objects.
 
     If no arguments are passed, a network with a = 0, gamma = 1 is solved in
     the unconstrained and synchronized flowscheme.
@@ -26,22 +26,26 @@ class Data():
         save: Whether the network should save the Nodes and Flow objects.
     '''
 
-    def __init__(self, load=True, solve=False, a=0.80, g=1.00,
-                 mode='copper square verbose',
-                 filename='test_result',
-                 DC=False,
-                 constrained=False,
-                 b=1.00,
-                 save=True):
+    def __init__(self, a=0.80, g=1.00, b=1.00,
+                 mode='square',
+                 DC=True,
+                 constrained=True,
+                 load=False,
+                 save_F=False):
         self.a = a
         self.g = g
-        self.mode = mode
-        self.filename = filename
-        self.DC = DC
-        self.constrained = constrained
         self.b = b
-        self.save = save
-
+        self.mode = mode
+        self.DC = DC
+        self.save_F = save_F
+        self.constrained = constrained
+        str_constrained = 'c' if constrained else 'u'
+        str_lin_syn = 's' if 'square' in mode else 'l'
+        self.nodes_name = '{0}_{1}_a{2:.2f}_g{3:.2f}_b{4:.2f}'.format(str_constrained,
+                                                                      str_lin_syn,
+                                                                      a, g, b)
+        self.path = 'results/N/'
+        self.fullname = self.path + self.nodes_name + '_N.npz'
         # Listing all filenames and link names ---------------------------------
         self.files = ['AT.npz', 'FI.npz', 'NL.npz', 'BA.npz', 'FR.npz',
                       'NO.npz', 'BE.npz', 'GB.npz', 'PL.npz', 'BG.npz',
@@ -65,10 +69,11 @@ class Data():
                           'EST to LVA', 'LVA to LTU']
 
         # Should the network be solved or loaded from file.
-        if solve:
+        if not os.path.isfile(self.fullname):
+            print('Network not solved - solving and saving...')
             self.solve_network()
-        elif load and not solve:
-            self.load_network()
+        else:
+            print('Network already solved.')
 
     def find_country(self, country='DK'):
         # Returns the county's index number in the list.
@@ -92,13 +97,12 @@ class Data():
 
         Differs significantly whether the network is constrained or not.
         '''
-        F_name = 'results/' + self.filename + '_F.npz'
+        N_name = self.fullname
+        F_name = self.fullname.replace('N', 'F')
         self.N = cl.Nodes(admat='./settings/eadmat.txt',
                           path='./data/',
                           prefix="ISET_country_",
                           files=self.files,
-                          load_filename=None,
-                          full_load=False,
                           alphas=self.a,
                           gammas=self.g)
         msg = ('{0} {1}-network with mode = "{2}"\nALPHA = {3:.2f}, GAMMA = {4:.2f}'
@@ -114,7 +118,7 @@ class Data():
             # File naming for the unconstrained files.
             copper_file = 'data/copperflows/copperflow_a{0:.2f}_g{1:.2f}.npy'
             if not os.path.isfile(copper_file.format(self.a, self.g)):
-                print("Couldn't find file '{0}' - solving it and"
+                print("No copperflow file '{0}' - solving it and"
                         " saving...").format(copper_file.format(self.a, self.g))
                 msgCopper = ('unconstrained DC-network with mode = "{0}"\nALPHA ='
                         ' {1:.2f}, GAMMA = {2:.2f}').format(mode, self.a, self.g)
@@ -163,22 +167,32 @@ class Data():
         # Checking if results-folder exists. Create it if not.
         if not os.path.exists('results/'):
             os.makedirs('results/')
-        # If variable save == True, save the solved network and flows.
-        if self.save:
-            self.M.save_nodes(filename=self.filename + '_N')
-            np.savez(F_name, self.F)
+        if not os.path.exists('results/N/'):
+            os.makedirs('results/N/')
+        if not os.path.exists('results/F/') and self.save_F:
+            os.makedirs('results/F/')
+        print 'SAVING'
+        print N_name
+        self.M.save_nodes(filename=self.nodes_name + '_N.npz', path='results/N/')
+        if self.save_F:
+            np.savez_compressed(F_name, self.F)
+
+
+
+
+
 
     ## LOAD --------------------------------------------------------------------
     # Loading network with parameters set in __init__.
-    def load_network(self):
-        F_name = 'results/' + self.filename + '_F.npz'
-        N_name = self.filename + '_N.npz'
-        self.N = cl.Nodes(load_filename=N_name,
-                          files=self.files,
-                          path='./data/',
-                          prefix='ISET_country_')
-        self.links = np.load(F_name)
-        self.F = self.links.f.arr_0
+#     def load_network(self):
+#         F_name = 'results/' + self.filename + '_F.npz'
+#         N_name = self.filename
+#         self.N = cl.Nodes(load_filename=N_name,
+#                           files=self.files,
+#                           path='./data/',
+#                           prefix='ISET_country_')
+#         self.links = np.load(F_name)
+#         self.F = self.links.f.arr_0
 
-if __name__ == '__main__':
-    B = Data(load=True, DC=True, filename='injection')
+if __name__ == '__main__': 
+    B = Data(DC=False, constrained=False)
