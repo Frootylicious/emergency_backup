@@ -10,7 +10,7 @@ import colormaps as cmaps
 import matplotlib.pyplot as plt
 import regions.classes as cl
 from itertools import product
-from data_solving_new import Data
+from data_solving import Data
 
 
 '''
@@ -243,7 +243,8 @@ class BackupEurope(object):
     def plot_timeseries_EU(self, a=0.80, g=1.00, b=1.00):
 #         B = Data(solve=True, a=a, g=g, b=b, constrained=True, DC=True)
         countries = [i + '.npz' for i in self.countries]
-        N = cl.Nodes(load_filename='N/c_s_a0.80_g1.00_b1.00_N.npz',
+        load_str = 'N/' + self.N_str.format(c='c', f='s', a=a, g=g, b=b) + '_N.npz'
+        N = cl.Nodes(load_filename=load_str,
                      files=countries,
                      path='data/',
                      prefix='ISET_country_')
@@ -256,15 +257,21 @@ class BackupEurope(object):
 
         EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
 
-        K_EB = np.load('results/emergency_capacities/EC_c_s_a0.80_g1.00_b1.00.npz')
+        K_EB_str = 'results/emergency_capacities/EC_' + self.N_str.format(c='c',
+                                                                          f='s',
+                                                                          a=a,
+                                                                          g=g,
+                                                                          b=b) + '.npz'
+        K_EB = np.load(K_EB_str)
+        print(K_EB.f.arr_0)
         K_EB = sum(K_EB.f.arr_0) / EUL_avg
 
         timeseries_EU = np.sum(timeseries, axis=0) / EUL_avg
         timeseries_EU[timeseries_EU < 0] = 0
         self.timeseries_EU = timeseries_EU
 
-        title_str1 = r'$\frac{\left<L_{EU}-G_{EU}^R - K_{EU}^{B99}' 
-        title_str2 = r' - I_{EU} + E_{EU}\right>}{\left< L_{EU} \right>}$'
+        title_str1 = r'$\frac{L_{EU}-G_{EU}^R - K_{EU}^{B99}' 
+        title_str2 = r' - I_{EU} + E_{EU}}{\left< L_{EU} \right>}$'
         txt_str1 = r'$\frac{{K_{{EU}}^{{EB}}}}{{\left<L_{{EU}}\right>}} = {0:.2f}$'
         txt_str2 = r'$\alpha = {0}, \gamma = {1}, \beta = {2}$'.format(a, g, b)
 
