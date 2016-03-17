@@ -6,7 +6,7 @@ from os import listdir
 import regions.classes as cl
 
 def all_combinations():
-    names = [name for name in listdir('./results/balancing')]
+    names = [name for name in listdir('./results/N')]
     print(names)
     combos = [(name[0], name[2], float(name[5:9]), float(name[11:15]), float(name[17:21])) for name in names]
     return combos
@@ -29,6 +29,7 @@ def qq_plot(country, data_touple):
                      'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
                      'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
         country_dict = dict(zip(countries, list(range(len(countries)))))
+        countries = [c + '.npz' for c in countries]
         N = cl.Nodes(load_filename='N/%s_%s_a%.2f_g%.2f_b%.2f_N.npz' % (c, f, a, g, b),
                      files=countries,
                      path='/home/simon/Dropbox/Root/Data/ISET/',
