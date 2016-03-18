@@ -67,7 +67,8 @@ class  BalancingCalculation():
         '''
         Runs multiprocessing on number of cores - 1.
         '''
-        cores = mp.cpu_count() - 2
+#         cores = mp.cpu_count() - 2
+        cores = 4
         pool = mp.Pool(cores)
         s = 'Running multiprocessing with {0} jobs on {1} cores.'
         print(s.format(len(self.alpha_list) * len(self.gamma_list) * len(beta_list), cores))
@@ -81,12 +82,13 @@ class  BalancingCalculation():
         pool.join()
 
 if __name__ == '__main__':
-#     alpha_list = np.linspace(0, 1, 3)
-#     gamma_list = np.linspace(0, 2, 3)
-#     beta_list = np.linspace(0, 1, 3)
-    alpha_list = [0.8]
-    gamma_list = [1.0]
-    beta_list = [1.0]
+    alpha_list = np.linspace(0, 1, 11)
+    gamma_list = np.linspace(0, 2, 11)
+    beta_list = np.linspace(0, 1, 3)
+    beta_list = [0.50, 0.75, 1.00]
+#     alpha_list = [0.8]
+#     gamma_list = [1.0]
+#     beta_list = [1.0]
     lol = BalancingCalculation(alpha_list = alpha_list,
                                gamma_list = gamma_list,
                                beta_list=beta_list,

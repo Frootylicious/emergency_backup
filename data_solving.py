@@ -56,6 +56,10 @@ class Data():
         else:
             print('Network already solved.')
 
+        if not os.path.exists(s.results_folder):
+            os.makedirs(s.results_folder)
+
+
     def find_country(self, country='DK'):
         # Returns the county's index number in the list.
         return(self.files.index(country + '.npz'))
@@ -97,24 +101,24 @@ class Data():
         if self.constrained:
             mode = 'square' if 'square' in self.mode else 'linear'
             # File naming for the unconstrained files.
-            copper_file = s.copper_path + s.copper_name
-            if not os.path.isfile(copper_file.format(self.a, self.g)):
+            if not os.path.isfile(s.copper_fullname.format(self.a, self.g)):
                 print("No copperflow file '{0}' - solving it and"
-                        " saving...").format(copper_file.format(self.a, self.g))
+                        " saving...").format(s.copper_name.format(self.a, self.g))
                 msgCopper = ('unconstrained DC-network with mode = "{0}"\nALPHA ='
                         ' {1:.2f}, GAMMA = {2:.2f}').format(mode, self.a, self.g)
                 M_copperflows, F_copperflows = dc.DC_solve(self.N,
                                                            mode=mode,
                                                            msg=msgCopper)
-                np.save(copper_file.format(self.a, self.g),
-                                    F_copperf)
-                print('Saved copper flows to file:{0}'.format(copper_file.format(self.a,
+                np.save(s.copper_fullname.format(self.a, self.g), F_copperflows)
+                print('Saved copper flows to file:{0}'.format(s.copper_name.format(self.a,
                                                                                  self.g)))
+            else:
+                print("Found copperflow file - using for constrained flow")
 
             # Calculating the 99 % quantile. This function from tools takes a
             # quantile and a filename for the unconstrained flow with same alpha
             # and gamma values.
-            h0 = to.get_quant_caps(quant=0.99, filename=copper_file.format(self.a, self.g))
+            h0 = to.get_quant_caps(quant=0.99, filename=s.copper_fullname.format(self.a, self.g))
             msg_constrained = msg.format('constrained',
                                          'DC',
                                          mode,
@@ -152,8 +156,6 @@ class Data():
             os.makedirs(s.nodes_folder)
         if not os.path.exists(s.links_folder) and self.save_F:
             os.makedirs(s.links_folder)
-        print 'SAVING'
-        print N_name
         self.M.save_nodes(filename=self.nodes_name + '_N.npz', path=s.nodes_folder)
         if self.save_F:
             np.savez_compressed(F_name, self.F)
