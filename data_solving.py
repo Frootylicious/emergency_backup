@@ -1,6 +1,7 @@
  # -*- coding: utf8 -*-
 from __future__ import division
 import numpy as np
+import settings as s
 import regions.classes as cl
 import aurespf.solvers as au
 import aurespf.DCsolvers as dc
@@ -41,32 +42,12 @@ class Data():
         self.constrained = constrained
         str_constrained = 'c' if constrained else 'u'
         str_lin_syn = 's' if 'square' in mode else 'l'
-        self.nodes_name = '{0}_{1}_a{2:.2f}_g{3:.2f}_b{4:.2f}'.format(str_constrained,
-                                                                      str_lin_syn,
-                                                                      a, g, b)
-        self.path = 'results/N/'
+        self.nodes_name = s.nodes_name.format(str_constrained, str_lin_syn, a, g, b)
+        self.path = s.nodes_folder
         self.fullname = self.path + self.nodes_name + '_N.npz'
         # Listing all filenames and link names ---------------------------------
-        self.files = ['AT.npz', 'FI.npz', 'NL.npz', 'BA.npz', 'FR.npz',
-                      'NO.npz', 'BE.npz', 'GB.npz', 'PL.npz', 'BG.npz',
-                      'GR.npz', 'PT.npz', 'CH.npz', 'HR.npz', 'RO.npz',
-                      'CZ.npz', 'HU.npz', 'RS.npz', 'DE.npz', 'IE.npz',
-                      'SE.npz', 'DK.npz', 'IT.npz', 'SI.npz', 'ES.npz',
-                      'LU.npz', 'SK.npz', 'EE.npz', 'LV.npz', 'LT.npz']
-
-        self.link_list = ['AUT to CHE', 'AUT to CZE', 'AUT to HUN', 'AUT to DEU',
-                          'AUT to ITA', 'AUT to SVN', 'FIN to SWE', 'FIN to EST',
-                          'NLD to NOR', 'NLD to BEL', 'NLD to GBR', 'NLD to DEU',
-                          'BIH to HRV', 'BIH to SRB', 'FRA to BEL', 'FRA to GBR',
-                          'FRA to CHE', 'FRA to DEU', 'FRA to ITA', 'FRA to ESP',
-                          'NOR to SWE', 'NOR to DNK', 'GBR to IRL', 'POL to CZE',
-                          'POL to DEU', 'POL to SWE', 'POL to SVK', 'BGR to GRC',
-                          'BGR to ROU', 'BGR to SRB', 'GRC to ITA', 'PRT to ESP',
-                          'CHE to DEU', 'CHE to ITA', 'HRV to HUN', 'HRV to SRB',
-                          'HRV to SVN', 'ROU to HUN', 'ROU to SRB', 'CZE to DEU',
-                          'CZE to SVK', 'HUN to SRB', 'HUN to SVK', 'DEU to SWE',
-                          'DEU to DNK', 'DEU to LUX', 'SWE to DNK', 'ITA to SVN',
-                          'EST to LVA', 'LVA to LTU']
+        self.files = s.files
+        self.link_list = s.link_list
 
         # Should the network be solved or loaded from file.
         if not os.path.isfile(self.fullname):
@@ -100,9 +81,9 @@ class Data():
         N_name = self.fullname
         F_name = self.fullname.replace('N', 'F')
         self.N = cl.Nodes(admat='./settings/eadmat.txt',
-                          path='./data/',
+                          path=s.iset_path,
                           prefix="ISET_country_",
-                          files=self.files,
+                          files=s.files,
                           alphas=self.a,
                           gammas=self.g)
         msg = ('{0} {1}-network with mode = "{2}"\nALPHA = {3:.2f}, GAMMA = {4:.2f}'
@@ -116,7 +97,7 @@ class Data():
         if self.constrained:
             mode = 'square' if 'square' in self.mode else 'linear'
             # File naming for the unconstrained files.
-            copper_file = 'data/copperflows/copperflow_a{0:.2f}_g{1:.2f}.npy'
+            copper_file = s.copper_path + s.copper_filename
             if not os.path.isfile(copper_file.format(self.a, self.g)):
                 print("No copperflow file '{0}' - solving it and"
                         " saving...").format(copper_file.format(self.a, self.g))
@@ -165,15 +146,15 @@ class Data():
                                                         self.b))
 
         # Checking if results-folder exists. Create it if not.
-        if not os.path.exists('results/'):
-            os.makedirs('results/')
-        if not os.path.exists('results/N/'):
-            os.makedirs('results/N/')
-        if not os.path.exists('results/F/') and self.save_F:
-            os.makedirs('results/F/')
+        if not os.path.exists(s.results_folder):
+            os.makedirs(s.results_folder)
+        if not os.path.exists(s.nodes_folder):
+            os.makedirs(s.nodes_folder)
+        if not os.path.exists(s.links_folder) and self.save_F:
+            os.makedirs(s.links_folder)
         print 'SAVING'
         print N_name
-        self.M.save_nodes(filename=self.nodes_name + '_N.npz', path='results/N/')
+        self.M.save_nodes(filename=self.nodes_name + '_N.npz', path=s.nodes_folder)
         if self.save_F:
             np.savez_compressed(F_name, self.F)
 
@@ -194,5 +175,5 @@ class Data():
 #         self.links = np.load(F_name)
 #         self.F = self.links.f.arr_0
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     B = Data(DC=False, constrained=False)

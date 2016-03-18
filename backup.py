@@ -5,6 +5,7 @@ import matplotlib
 # matplotlib.use('Agg')
 import sys
 import os, os.path
+import settings as s
 import numpy as np
 import colormaps as cmaps
 import matplotlib.pyplot as plt
@@ -20,23 +21,19 @@ TODO:
 
 class BackupEurope(object):
     """ Backup docstring"""
-    def __init__(self, N_path='results/N/', ISET_path='data/'):
+    def __init__(self):
         "docstring"
-        self.N_path = N_path
-        self.ISET_path = ISET_path
+        self.ISET_path = s.iset_path
         # Saving all combinations present from files.
         self.all_combinations = self._read_from_file()
         self.chosen_combinations = self.get_chosen_combinations()
-        self.N_str = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
-        self.countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
-                          'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
-                          'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
-        self.country_dict = dict(zip(self.countries, list(range(len(self.countries)))))
-        if not os.path.exists('results/figures/'):
-            os.mkdir('results/figures/')
+        self.N_str = s.nodes_name
+        self.country_dict = dict(zip(s.countries, list(range(len(s.countries)))))
+        if not os.path.exists(s.figures_folder):
+            os.mkdir(s.figures_folder)
         self.loads = np.array([np.load('%sISET_country_%s.npz'\
-                % (self.ISET_path, self.countries[node]))['L']\
-                for node in range(len(self.countries))])
+                % (s.iset_path, s.countries[node]))['L']\
+                for node in range(len(s.countries))])
 
     def _read_from_file(self):
         '''
@@ -44,7 +41,7 @@ class BackupEurope(object):
             [{'c':'u', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00},
              {'c':'c', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00}]
         '''
-        filename_list = os.listdir(self.N_path)
+        filename_list = os.listdir(s.nodes_folder)
         all_combinations = []
         for name in filename_list:
             all_combinations.append({'c':name[0],
@@ -129,13 +126,13 @@ class BackupEurope(object):
 
 
 
-    def _calculate_all_EC(self, save_path='results/emergency_capacities/', quantile=99):
+    def _calculate_all_EC(self, save_path=s.EBC_folder, quantile=99):
         # Calculating all EC
         for combination in self.all_combinations:
             self._calculate_single_EC(combination)
         return
 
-    def _calculate_chosen_EC(self, save_path='results/emergency_capacities/',  quantile=99):
+    def _calculate_chosen_EC(self, save_path=s.EBC_folder,  quantile=99):
         # Calculating chosen EC
         for combination in self.chosen_combinations:
             self._calculate_single_EC(combination)
@@ -143,7 +140,7 @@ class BackupEurope(object):
 
     def _calculate_single_EC(self,
                              combination_dict,
-                             save_path='results/emergency_capacities/',
+                             save_path=s.EBC_folder,
                              quantile=99):
         '''
         Function that calculates emergency storage capacities for all countries
@@ -155,20 +152,19 @@ class BackupEurope(object):
         EC_{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}.npy
 
         '''
+        print combination_dict
         # Check if path exists. Create it if not.
-        if not os.path.exists(save_path):
-            os.mkdir(save_path)
-        if os.path.isfile(save_path + 'EC_' +
-                self.N_str.format(**combination_dict) + '.npz'):
+        if not os.path.exists(s.EBC_folder):
+            os.mkdir(s.EBC_folder)
+        if os.path.isfile(s.EBC_fullname.format(**combination_dict)):
             print('EC-file {0} already exists - skipping.'.format(combination_dict))
         else:
-            combination_caps = np.zeros(len(self.countries))
-            nodes = np.load(self.N_path + self.N_str.format(**combination_dict) + '_N.npz')
+            combination_caps = np.zeros(len(s.countries))
+            nodes = np.load(s.nodes_fullname.format(**combination_dict))
             balancing = nodes['balancing']
             for i, country_backup in enumerate(balancing):
                 combination_caps[i] = self._storage_needs(country_backup, quantile)[0]
-            np.savez(save_path + 'EC_' +
-                    self.N_str.format(**combination_dict) + '.npz', combination_caps)
+            np.savez(s.EBC_fullname.format(**combination_dict), combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
@@ -188,16 +184,14 @@ class BackupEurope(object):
         dg = float('{0:.2f}'.format(np.diff(gamma_list)[0]))
         EC_matrix = np.empty((len(alpha_list), len(gamma_list)))
         EC_matrix[:] = np.nan
-        load_str = 'results/emergency_capacities/'
-        load_str += 'EC_' + self.N_str + '.npz'
         # Calculating the mean of the sum of the loads for europe.
         mean_sum_loads = np.mean(np.sum(self.loads, axis=0)) * 1000
         number_of_nans = 0
         for i, a in enumerate(alpha_list):
             for j, g in enumerate(gamma_list):
                 load_dict = {'f':f, 'c':c, 'b':b, 'a':a, 'g':g}
-                if os.path.isfile(load_str.format(**load_dict)):
-                    EC = np.load(load_str.format(**load_dict))['arr_0']
+                if os.path.isfile(s.EBC_fullname.format(**load_dict)):
+                    EC = np.load(s.EBC_fullname.format(**load_dict))['arr_0']
                     EC_matrix[i, j] = np.sum(EC) / mean_sum_loads
                 else:
                     number_of_nans += 1
@@ -235,19 +229,19 @@ class BackupEurope(object):
         plt.tight_layout()
         # Checking if the folder exists - create it if it doesn't
         save_str = 'colormapAG_b{0:.2f}.png'.format(b)
-        plt.savefig('results/figures/' + save_str)
+        plt.savefig(s.figures_folder + save_str)
         print('Saved file "{0}".'.format(save_str))
         plt.close()
         return
 
     def plot_timeseries_EU(self, a=0.80, g=1.00, b=1.00):
 #         B = Data(solve=True, a=a, g=g, b=b, constrained=True, DC=True)
-        countries = [i + '.npz' for i in self.countries]
-        load_str = 'N/' + self.N_str.format(c='c', f='s', a=a, g=g, b=b) + '_N.npz'
-        N = cl.Nodes(load_filename=load_str,
-                     files=countries,
-                     path='data/',
-                     prefix='ISET_country_')
+        s.countries
+        N = cl.Nodes(load_filename=s.nodes_fullname.format(c='c', f='s', a=a, g=g, b=b),
+                     files=s.files,
+                     load_path='',
+                     path=s.iset_path,
+                     prefix=s.iset_prefix)
 
         timeseries = np.zeros((30, N[0].nhours))
 
@@ -257,12 +251,7 @@ class BackupEurope(object):
 
         EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
 
-        K_EB_str = 'results/emergency_capacities/EC_' + self.N_str.format(c='c',
-                                                                          f='s',
-                                                                          a=a,
-                                                                          g=g,
-                                                                          b=b) + '.npz'
-        K_EB = np.load(K_EB_str)
+        K_EB = np.load(s.EBC_fullname.format(c='c', f='s', a=a, g=g, b=b))
         K_EB = sum(K_EB.f.arr_0) / EUL_avg
 
         timeseries_EU = np.sum(timeseries, axis=0) / EUL_avg
@@ -291,14 +280,13 @@ class BackupEurope(object):
         self._calculate_chosen_EC()
         alpha_list = []
         EC_list = []
-        filepath = 'results/emergency_capacities/EC_'
         EUL = np.array([np.load('%sISET_country_%s.npz'\
-                % (self.ISET_path, self.countries[node]))['L']\
-                for node in range(len(self.countries))])
+                % (self.ISET_path, s.countries[node]))['L']\
+                for node in range(len(s.countries))])
         EUL = np.sum(EUL, axis=0) * 1000
         for combination in self.chosen_combinations:
             alpha_list.append(combination['a'])
-            EC = np.load(filepath + self.N_str.format(**combination) + '.npz')
+            EC = np.load(s.EBC_fullname.format(**combination))
             EC = np.mean(np.sum(EC.f.arr_0, axis=0))
             EC_list.append(EC/np.mean(EUL))
 

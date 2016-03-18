@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import numpy as np
-from data_solving_new import Data
+from data_solving import Data
 from itertools import product
 import multiprocessing as mp
 import os
