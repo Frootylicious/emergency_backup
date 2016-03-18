@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+import settings as s
 import numpy as np
 from data_solving import Data
 from itertools import product
@@ -37,11 +38,12 @@ def get_B(values):
     str_lin_syn = 's' if 'square' in mode else 'l'
 
     # Checking if the file already exists. In this case - skip it.
-#     if os.path.isfile(filename):
-#         print('file: "{0}" already exists - skipping.'.format(filename))
-#         return
-#     else:
-    data = Data(a=a, g=g, b=b, mode=mode, constrained=constrained, DC=DC)
+    f = s.nodes_fullname.format(c=str_constrained, f=str_lin_syn, a=a, g=g, b=b)
+    if os.path.isfile(f):
+        print('file: "{0}" already exists - skipping.'.format(f))
+        return
+    else:
+        data = Data(a=a, g=g, b=b, mode=mode, constrained=constrained, DC=DC)
 
 
 
