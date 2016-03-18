@@ -67,7 +67,7 @@ class  BalancingCalculation():
         '''
         Runs multiprocessing on number of cores - 1.
         '''
-        cores = mp.cpu_count() -2
+        cores = mp.cpu_count() - 2
         pool = mp.Pool(cores)
         s = 'Running multiprocessing with {0} jobs on {1} cores.'
         print(s.format(len(self.alpha_list) * len(self.gamma_list) * len(beta_list), cores))

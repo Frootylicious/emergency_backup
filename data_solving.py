@@ -42,7 +42,7 @@ class Data():
         self.constrained = constrained
         str_constrained = 'c' if constrained else 'u'
         str_lin_syn = 's' if 'square' in mode else 'l'
-        self.nodes_name = s.nodes_name.format(str_constrained, str_lin_syn, a, g, b)
+        self.nodes_name = s.nodes_name.format(c=str_constrained, f=str_lin_syn, a=a, g=g, b=b)
         self.path = s.nodes_folder
         self.fullname = self.path + self.nodes_name + '_N.npz'
         # Listing all filenames and link names ---------------------------------
@@ -97,7 +97,7 @@ class Data():
         if self.constrained:
             mode = 'square' if 'square' in self.mode else 'linear'
             # File naming for the unconstrained files.
-            copper_file = s.copper_path + s.copper_filename
+            copper_file = s.copper_path + s.copper_name
             if not os.path.isfile(copper_file.format(self.a, self.g)):
                 print("No copperflow file '{0}' - solving it and"
                         " saving...").format(copper_file.format(self.a, self.g))
@@ -107,7 +107,7 @@ class Data():
                                                            mode=mode,
                                                            msg=msgCopper)
                 np.save(copper_file.format(self.a, self.g),
-                                    F_copperflows)
+                                    F_copperf)
                 print('Saved copper flows to file:{0}'.format(copper_file.format(self.a,
                                                                                  self.g)))
 
