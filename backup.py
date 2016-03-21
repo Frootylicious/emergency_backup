@@ -83,17 +83,22 @@ class BackupEurope(object):
         self.chosen_combinations = chosen_combinations
         return chosen_combinations
 
-    def _quantile(quantile, dataset):
+    def _quantile(self, quantile, timeseries):
+        b = np.sort(timeseries)
+        c = quantile * len(b)
+        return b[int(round(c))]
+
+    def _quantile2(self, quantile, dataset):
         """
         Docstring for quantile.
         """
         # Convert to a histogram
-        hist, bin_edges = np.histogram(dataset, bins=10000)
+        hist, bin_edges = np.histogram(dataset, bins=10001)
         # Convert to a cummulated distribution
         cum_dist = np.cumsum(hist)
 
         # Find the value of bins when cum_dist = quantile*max(cum_dist)
-        bins = bin_edges[:-1] + 0.5*np.diff(bin_edges)[0]
+        bins = 0.5*bin_edges[:-1] + 0.5*bin_edges[1:]
         max_value = cum_dist[-1]
         
         return bins[cum_dist >= quantile*max_value][0]
@@ -140,13 +145,13 @@ class BackupEurope(object):
 
 
 
-    def _calculate_all_EC(self, save_path=s.EBC_folder, quantile=99):
+    def _calculate_all_EC(self, save_path=s.EBC_folder, quantile=0.99):
         # Calculating all EC
         for combination in self.all_combinations:
             self._calculate_single_EC(combination)
         return
 
-    def _calculate_chosen_EC(self, save_path=s.EBC_folder,  quantile=99):
+    def _calculate_chosen_EC(self, save_path=s.EBC_folder,  quantile=0.99):
         # Calculating chosen EC
         for combination in self.chosen_combinations:
             self._calculate_single_EC(combination)
@@ -155,7 +160,7 @@ class BackupEurope(object):
     def _calculate_single_EC(self,
                              combination_dict,
                              save_path=s.EBC_folder,
-                             quantile=99):
+                             quantile=0.99):
         '''
         Function that calculates emergency storage capacities for all countries
         in the file given by the combination-dictionary and saves them to files.
@@ -261,10 +266,9 @@ class BackupEurope(object):
         q1 = np.zeros((30, N[0].nhours))
 
         for i, n in enumerate(N):
-            timeseries[i] = n.load - n.get_solar() - n.get_wind() - self._quantile(99,
+            timeseries[i] = n.load - n.get_solar() - n.get_wind() - self._quantile(0.99,
                     n.get_balancing()) + n.get_export() - n.get_import() + n.get_curtailment()
-            q = self._quantile(99, n.get_balancing())
-            print q
+            q = self._quantile(0.99, n.get_balancing())
             q1[i] = n.get_balancing() - q
 
 
@@ -272,7 +276,6 @@ class BackupEurope(object):
 
         q1[q1 < 0] = 0
         q2 = np.sum(q1, axis=0)/EUL_avg
-        self.q2 = q2
 
 
         K_EB = np.load(s.EBC_fullname.format(c='c', f='s', a=a, g=g, b=b))
