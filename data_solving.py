@@ -99,6 +99,8 @@ class Data():
         # data/copperflows/ with the desired values. If it's not there, it is
         # calculated and saved.
         if self.constrained:
+            if not os.path.exists(s.copper_folder):
+                os.makedirs(s.copper_folder)
             mode = 'square' if 'square' in self.mode else 'linear'
             # File naming for the unconstrained files.
             if not os.path.isfile(s.copper_fullname.format(self.a, self.g)):
