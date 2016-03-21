@@ -150,9 +150,15 @@ class BackupEurope(object):
         """
         q = self._quantile(q, backup_timeseries)
         storage = backup_timeseries - q
-        storage_size = np.cumsum(storage)
-        storage_size[storage_size < 0] = 0
-        return storage_size
+        for index, val in enumerate(storage):
+            if index == 0:
+                if storage[index] < 0:
+                    storage[index] = 0
+            else:
+                storage[index] += storage[index - 1]
+                if storage[index] < 0:
+                    storage[index] = 0
+        return max(storage)
         
                         
 
