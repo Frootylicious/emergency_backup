@@ -136,9 +136,20 @@ class BackupEurope(object):
                 storage[index] = storage[index] + (q - val)
                 if storage[index] > 0:
                     storage[index] = 0
+                    
         return -min(storage), storage
 
-
+    def _storage_size(self, backup_timeseries, q=0.99):
+        """
+        Docstring
+        """
+        q = self._quantile(q, backup_timeseries)
+        storage = backup_timeseries - q
+        storage_size = np.cumsum(storage)
+        storage_size[storage_size < 0] = 0
+        return storage_size
+        
+                        
 
     def _calculate_all_EC(self, save_path=s.EBC_folder, quantile=99):
         # Calculating all EC
