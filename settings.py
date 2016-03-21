@@ -1,17 +1,16 @@
 # FOLDERS ------------------------------------------------------------------------------------------
-iset_path = 'data/'
+iset_path      = 'data/'
 results_folder = 'results/'
-links_folder = results_folder + 'F/'
+links_folder   = results_folder + 'F/'
 figures_folder = results_folder + 'figures/'
-
-iset_prefix = 'ISET_country_'
+iset_prefix    = 'ISET_country_'
 
 # FILES --------------------------------------------------------------------------------------------
 countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
              'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
              'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
 
-files = [c + '.npz' for c in countries]
+files     = [country + '.npz' for country in countries]
 
 link_list = ['AUT to CHE', 'AUT to CZE', 'AUT to HUN', 'AUT to DEU',
              'AUT to ITA', 'AUT to SVN', 'FIN to SWE', 'FIN to EST',
@@ -28,14 +27,14 @@ link_list = ['AUT to CHE', 'AUT to CZE', 'AUT to HUN', 'AUT to DEU',
              'EST to LVA', 'LVA to LTU']
 
 # FILENAMES ----------------------------------------------------------------------------------------
-nodes_folder = results_folder + 'N/'
-nodes_name = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
-nodes_fullname = nodes_folder + nodes_name + '_N.npz'
+nodes_folder    = results_folder + 'N/'
+nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
+nodes_fullname  = nodes_folder + nodes_name + '_N.npz'
  
-copper_folder = results_folder + 'copperflows/'
-copper_name = 'copperflow_a{0:.2f}_g{1:.2f}.npy'
+copper_folder   = results_folder + 'copperflows/'
+copper_name     = 'copperflow_a{0:.2f}_g{1:.2f}.npy'
 copper_fullname = copper_folder + copper_name
 
-EBC_folder = results_folder + 'emergency_capacities/'
-EBC_name = 'EC_' + nodes_name
-EBC_fullname = EBC_folder + EBC_name + '.npz'
+EBC_folder      = results_folder + 'emergency_capacities/'
+EBC_name        = 'EC_' + nodes_name
+EBC_fullname    = EBC_folder + EBC_name + '.npz'

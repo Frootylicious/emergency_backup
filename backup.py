@@ -244,12 +244,22 @@ class BackupEurope(object):
                      prefix=s.iset_prefix)
 
         timeseries = np.zeros((30, N[0].nhours))
+        q1 = np.zeros((30, N[0].nhours))
 
         for i, n in enumerate(N):
             timeseries[i] = n.load - n.get_solar() - n.get_wind() - self._quantile(99,
                     n.get_balancing()) + n.get_export() - n.get_import() + n.get_curtailment()
+            q = self._quantile(99, n.get_balancing())
+            print q
+            q1[i] = n.get_balancing() - q
+
 
         EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
+
+        q1[q1 < 0] = 0
+        q2 = np.sum(q1, axis=0)/EUL_avg
+        self.q2 = q2
+
 
         K_EB = np.load(s.EBC_fullname.format(c='c', f='s', a=a, g=g, b=b))
         K_EB = sum(K_EB.f.arr_0) / EUL_avg
@@ -265,6 +275,7 @@ class BackupEurope(object):
 
         fig, (ax)  = plt.subplots(1, 1, sharex=True)
         ax.plot(timeseries_EU)
+        ax.plot(q2, 'r')
         ax.set_title(title_str1 + title_str2, fontsize=20, y=0.9, x=0.3)
         fig.text(x=0.1, y=0.7, s=txt_str1.format(K_EB), fontsize=20)
         fig.text(x=0.1, y=0.6, s=txt_str2, fontsize=15)
