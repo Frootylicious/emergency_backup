@@ -83,8 +83,22 @@ class BackupEurope(object):
         self.chosen_combinations = chosen_combinations
         return chosen_combinations
 
+    def _quantile(quantile, dataset):
+        """
+        Docstring for quantile.
+        """
+        # Convert to a histogram
+        hist, bin_edges = np.histogram(dataset, bins=10000)
+        # Convert to a cummulated distribution
+        cum_dist = np.cumsum(hist)
 
-    def _quantile(self, quantile, dataset, cutzeros=False):
+        # Find the value of bins when cum_dist = quantile*max(cum_dist)
+        bins = bin_edges[:-1] + 0.5*np.diff(bin_edges)[0]
+        max_value = cum_dist[-1]
+        
+        return bins[cum_dist >= quantile*max_value][0]
+
+    def _quantile_old(self, quantile, dataset, cutzeros=False):
         """
         Takes a list of numbers, converts it to a list without zeros
         and returns the value of the 99% quantile.
