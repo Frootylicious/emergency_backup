@@ -199,7 +199,7 @@ class BackupEurope(object):
             nodes = np.load(s.nodes_fullname.format(**combination_dict))
             balancing = nodes['balancing']
             for i, country_backup in enumerate(balancing):
-                combination_caps[i] = self._storage_needs(country_backup, quantile)[0]
+                combination_caps[i] = self._storage_size(country_backup, quantile)
             np.savez(s.EBC_fullname.format(**combination_dict), combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
