@@ -1,11 +1,12 @@
 # FOLDERS ------------------------------------------------------------------------------------------
 iset_folder    = 'data/'
 results_folder = 'results/'
-links_folder   = results_folder + 'F/'
 figures_folder = results_folder + 'figures/'
+remote_figures_folder = '10.25.6.157:/home/kofoed/emergency_backup/results/figures/'
+remote_figures = results_folder + 'remote_figures/'
+
 iset_prefix    = 'ISET_country_'
 
-remote_figures_folder = '10.25.6.157:/home/kofoed/emergency_backup/results/figures/'
 
 # FILES --------------------------------------------------------------------------------------------
 countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
@@ -34,6 +35,9 @@ link_list = ['AUT to CHE', 'AUT to CZE', 'AUT to HUN', 'AUT to DEU',
 nodes_folder    = results_folder + 'N/'
 nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
 nodes_fullname  = nodes_folder + nodes_name + '_N.npz'
+
+links_folder    = results_folder + 'F/'
+links_fullname  = links_folder + nodes_name + '_F.npz'
  
 copper_folder   = results_folder + 'copperflows/'
 copper_name     = 'copperflow_a{0:.2f}_g{1:.2f}.npy'

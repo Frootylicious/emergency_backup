@@ -10,6 +10,7 @@ import numpy as np
 import colormaps as cmaps
 import matplotlib.pyplot as plt
 import regions.classes as cl
+import tools as to
 from itertools import product
 from data_solving import Data
 
@@ -29,8 +30,8 @@ class BackupEurope(object):
         results-folder to the list 'all_combinations'.
         """
         # Saving all combinations present from files.
-        self.all_combinations = self._read_from_file()
-        self.chosen_combinations = self.get_chosen_combinations()
+        self.all_combinations = to.read_from_file()
+        self.chosen_combinations = to.get_chosen_combinations()
 
         # Creating results- and figures folder.
         if not os.path.exists(s.results_folder):
@@ -43,163 +44,28 @@ class BackupEurope(object):
                 % (s.iset_folder, s.countries[node]))['L']\
                 for node in range(len(s.countries))])
 
-    def _read_from_file(self):
-        '''
-        Reads all solved network files in the 'nodes_folder' set in 'settings.py'.
-        Returns a list of dictionaries with the values from the files in the form:
-            [{'c':'u', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00},
-             {'c':'c', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00}]
-        '''
-        filename_list = os.listdir(s.nodes_folder)
-        all_combinations = []
-        for name in filename_list:
-            all_combinations.append({'c':name[0],
-                                     'f':name[2],
-                                     'a':float(name[5:9]),
-                                     'g':float(name[11:15]),
-                                     'b':float(name[17:21])})
-        return all_combinations
-
-
     def get_chosen_combinations(self, **kwargs):
-        '''
-        Function that extracts the wanted files in the 'self.all_combinations list'.
+        self.chosen_combinations = to.get_chosen_combinations(**kwargs)
+    
 
-        To choose all the solved networks in the synchronized flow scheme:
-            "self.get_chosen_combinations(f='s')".
-
-        All unconstrained networks with a gamma = 1.00 can be found by:
-            self.get_chosen_combinations(c='u', g=1.00)
-
-        returns a list of dictionaries with the desired values.
-        For instance:
-            [{'c':'u', 'f':'s', 'a':1.00, 'g':1.00, 'b':1.00},
-             {'c':'c', 'f':'s', 'a':0.80, 'g':1.00, 'b':0.50}
-             ...]
-        '''
-        def _check_in_dict(dic, kwargs):
-            """ Check if values are present in a dictionary.
-
-            Args:
-                dic: dictionary to check in.
-                kwargs: the keyword arguments to check for in the dictionary.
-            Returns:
-                boolean: True if all values are present in the dictionary, False if any are not.
-            """
-            for (name, value) in kwargs.items():
-                value = np.array(value)
-                if not dic[name] in value:
-                    return False
-            return True
-
-        chosen_combinations = []
-        # Checking all combinations.
-        for combination in self.all_combinations:
-            if _check_in_dict(combination, kwargs):
-                chosen_combinations.append(combination)
-
-        if len(chosen_combinations) == 0:
-            # Raise error if no chosen combinations are found.
-            raise ValueError('No files with {0} found!'.format(kwargs))
-        self.chosen_combinations = chosen_combinations
-        return chosen_combinations
-
-    def quantile(quantile, dataset):
-        """
-        Docstring for quantile.
-        """
-        return np.sort(dataset)[int(round(quantile*len(dataset)))]
-
-#     def _quantile2(self, quantile, dataset):
-#         """
-#         Docstring for quantile.
-#         """
-#         # Convert to a histogram
-#         hist, bin_edges = np.histogram(dataset, bins=10001)
-#         # Convert to a cummulated distribution
-#         cum_dist = np.cumsum(hist)
-# 
-#         # Find the value of bins when cum_dist = quantile*max(cum_dist)
-#         bins = 0.5*bin_edges[:-1] + 0.5*bin_edges[1:]
-#         max_value = cum_dist[-1]
-#         
-#         return bins[cum_dist >= quantile*max_value][0]
-# 
-#     def _quantile_old(self, quantile, dataset, cutzeros=False):
-#         """
-#         Takes a list of numbers, converts it to a list without zeros
-#         and returns the value of the 99% quantile.
-#         """
-#         if cutzeros:
-#             # Removing zeros
-#             dataset = dataset[np.nonzero(dataset)]
-#         # Convert to numpy histogram
-#         hist, bin_edges = np.histogram(dataset, bins = 10000, normed = True)
-#         dif = np.diff(bin_edges)[0]
-#         q = 0
-#         for index, val in enumerate(reversed(hist)):
-#             q += val*dif
-#             if q > 1 - float(quantile)/100:
-#                 #print 'Found %.3f quantile' % (1 - q)
-#                 return bin_edges[-index]
-# 
-# 
-#     def _storage_needs(self, backup_timeseries, quantile):
-#         """
-#         Arguments
-#         ---------
-#         backup:
-#         A timeseries of backups for a given node in the network
-# 
-#         quantile:
-#         Eg. 99% quantile
-#         """
-#         storage = np.zeros(len(backup_timeseries))
-#         q = self._quantile(quantile, backup_timeseries)
-#         for index, val in enumerate(backup_timeseries):
-#             if val >= q:
-#                 storage[index] = storage[index] - (val - q)
-#             else:
-#                 storage[index] = storage[index] + (q - val)
-#                 if storage[index] > 0:
-#                     storage[index] = 0
-#                     
-#         return -min(storage), storage
-
-    def _storage_size(self, backup_timeseries, q=0.99):
-        """
-        Docstring
-        """
-        q = self._quantile(q, backup_timeseries)
-        storage = backup_timeseries - q
-        for index, val in enumerate(storage):
-            if index == 0:
-                if storage[index] < 0:
-                    storage[index] = 0
-            else:
-                storage[index] += storage[index - 1]
-                if storage[index] < 0:
-                    storage[index] = 0
-        return max(storage)
-        
-                        
+# CALCULATING EMERGENCY BACKUP ---------------------------------------------------------------------
 
     def _calculate_all_EC(self, save_path=s.EBC_folder, quantile=0.99):
         # Calculating all EC in self.all_combinations.
         for combination in self.all_combinations:
-            self._calculate_single_EC(combination)
+            self._calculate_EC(combination)
         return
 
     def _calculate_chosen_EC(self, save_path=s.EBC_folder,  quantile=0.99):
         # Calculating EBC in self.chosen_combinations.
         for combination in self.chosen_combinations:
-            self._calculate_single_EC(combination)
+            self._calculate_EC(combination)
 
 
-    def _calculate_single_EC(self,
-                             combination_dict,
-                             save_path=s.EBC_folder,
-                             quantile=0.99):
+    def _calculate_EC(self,
+                      combination_dict,
+                      save_path=s.EBC_folder,
+                      quantile=0.99):
         '''
         Function that calculates emergency storage capacities for all countries
         in the file given by the combination-dictionary and saves them to files.
@@ -231,6 +97,7 @@ class BackupEurope(object):
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
+# PLOTTING -----------------------------------------------------------------------------------------
 
     def plot_colormap(self, f='s', c='c', b=1.00, a_amount=11, g_amount=11):
         """
@@ -341,7 +208,7 @@ class BackupEurope(object):
         q1 = np.zeros((30, N[0].nhours))
 
         for i, n in enumerate(N):
-            timeseries[i] = n.load - n.get_solar() - n.get_wind() - self._quantile(0.99,
+            timeseries[i] = n.load - n.get_solar() - n.get_wind() - to.quantile(0.99,
                     n.get_balancing()) + n.get_export() - n.get_import() + n.get_curtailment()
 #             q = self._quantile(0.99, n.get_balancing())
 #             q1[i] = n.get_balancing() - q
@@ -416,9 +283,11 @@ class BackupEurope(object):
         plt.close()
         return
 
-    def get_pepsi_figures(self):
+    def get_remote_figures(self):
+        if not os.path.exists(s.remote_figures):
+            os.mkdir(s.remote_figures)
         """Copy figures from the result-folder on a remote server"""
-        os.system('scp -r {0} results/remote_figures/'.format(s.remote_figures_folder))
+        os.system('scp -r {0}. {1}'.format(s.remote_figures_folder, s.remote_figures))
 
 if __name__ == '__main__':
     B = BackupEurope()
