@@ -78,7 +78,7 @@ def quantile(quantile, dataset):
     return np.sort(dataset)[int(round(quantile*len(dataset)))]
 
 
-def _storage_size(backup_timeseries, q=0.99):
+def storage_size(backup_timeseries, q=0.99):
     """
     Docstring
     """
@@ -93,3 +93,10 @@ def _storage_size(backup_timeseries, q=0.99):
             if storage[index] < 0:
                 storage[index] = 0
     return max(storage)
+
+def get_remote_figures():
+    if not os.path.exists(s.remote_figures):
+        os.mkdir(s.remote_figures)
+    """Copy figures from the result-folder on a remote server"""
+    os.system('scp -r {0}. {1}'.format(s.remote_figures_folder, s.remote_figures))
+    return

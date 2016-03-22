@@ -92,7 +92,7 @@ class BackupEurope(object):
             nodes = np.load(s.nodes_fullname.format(**combination_dict))
             balancing = nodes['balancing']
             for i, country_backup in enumerate(balancing):
-                combination_caps[i] = self._storage_size(country_backup, quantile)
+                combination_caps[i] = to.storage_size(country_backup, quantile)
             np.savez(s.EBC_fullname.format(**combination_dict), combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
@@ -283,11 +283,6 @@ class BackupEurope(object):
         plt.close()
         return
 
-    def get_remote_figures(self):
-        if not os.path.exists(s.remote_figures):
-            os.mkdir(s.remote_figures)
-        """Copy figures from the result-folder on a remote server"""
-        os.system('scp -r {0}. {1}'.format(s.remote_figures_folder, s.remote_figures))
 
 if __name__ == '__main__':
     B = BackupEurope()
