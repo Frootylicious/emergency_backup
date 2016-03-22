@@ -85,7 +85,7 @@ class Data():
         N_name = self.fullname
         F_name = self.fullname.replace('N', 'F')
         self.N = cl.Nodes(admat='./settings/eadmat.txt',
-                          path=s.iset_path,
+                          path=s.iset_folder,
                           prefix="ISET_country_",
                           files=s.files,
                           alphas=self.a,
