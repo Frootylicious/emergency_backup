@@ -1,9 +1,11 @@
 # FOLDERS ------------------------------------------------------------------------------------------
-iset_path      = 'data/'
+iset_folder    = 'data/'
 results_folder = 'results/'
 links_folder   = results_folder + 'F/'
 figures_folder = results_folder + 'figures/'
 iset_prefix    = 'ISET_country_'
+
+remote_figures_folder = '10.25.6.157:/home/kofoed/emergency_backup/results/figures/'
 
 # FILES --------------------------------------------------------------------------------------------
 countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
@@ -11,6 +13,8 @@ countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
              'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
 
 files     = [country + '.npz' for country in countries]
+
+country_dict = dict(zip(countries, list(range(len(countries)))))
 
 link_list = ['AUT to CHE', 'AUT to CZE', 'AUT to HUN', 'AUT to DEU',
              'AUT to ITA', 'AUT to SVN', 'FIN to SWE', 'FIN to EST',
