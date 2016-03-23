@@ -105,7 +105,7 @@ def storage_size(backup_timeseries, q=0.99):
             a[index] -= val
             a[index + 1] = a[index]
         else:
-            a[index] += val
+            a[index] += -val
             if a[index] > 0:
                 a[index] = 0
             a[index + 1] = a[index]
