@@ -82,7 +82,7 @@ def storage_size(backup_timeseries, q=0.99):
     """
     Docstring
     """
-    q = self._quantile(q, backup_timeseries)
+    q = quantile(q, backup_timeseries)
     storage = backup_timeseries - q
     for index, val in enumerate(storage):
         if index == 0:
