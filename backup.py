@@ -187,7 +187,7 @@ class BackupEurope(object):
         plt.close()
         return
 
-    def plot_timeseries_EU(self, a=0.80, g=1.00, b=1.00):
+    def plot_timeseries_EU(self, a=0.80, g=1.00, b=1.00, c='c', f='s'):
         """
         Plot a timeseries of a combined EU with load, solar generation, wind generation, 99 %
         quantile of balancing, export, import and curtailment.
@@ -198,7 +198,7 @@ class BackupEurope(object):
             b [float]: value of beta.
         """
         s.countries
-        N = cl.Nodes(load_filename=s.nodes_fullname.format(c='c', f='s', a=a, g=g, b=b),
+        N = cl.Nodes(load_filename=s.nodes_fullname.format(c=c, f=f, a=a, g=g, b=b),
                      files=s.files,
                      load_path='',
                      path=s.iset_folder,
@@ -239,13 +239,13 @@ class BackupEurope(object):
         fig.text(x=0.1, y=0.7, s=txt_str1.format(K_EB), fontsize=20)
         fig.text(x=0.1, y=0.6, s=txt_str2, fontsize=15)
         plt.tight_layout()
-        plt.show()
-        plt.savefig('results/figures/timeseriesEU.png')
+#         plt.show()
+        plt.savefig('results/figures/tsEU_{0}.png'.format(s.nodes_name.format(c=c, f=f, a=a, g=g, b=b)))
         plt.close()
         return
 
 
-    def plot_alpha(self, gamma=1.00, beta=1.00, c='c', f='s'):
+    def plot_alpha(self, g=1.00, b=1.00, c='c', f='s'):
         """Plot the EBC as a function of alpha with gamma and beta fixed
         Args:
             gamma [float]: value of the fixed gamma.
@@ -254,32 +254,33 @@ class BackupEurope(object):
             f [string]: Either 's' or 'l' for Synchronized or Localized flowscheme.
         """
 
-        self.get_chosen_combinations(g=gamma, b=beta, c=c, f=f)
+        self.get_chosen_combinations(g=g, b=b, c=c, f=f)
         self._calculate_chosen_EC()
-        alpha_list = []
+        a_list = []
         EC_list = []
         EUL = np.array([np.load('%sISET_country_%s.npz'\
                 % (s.iset_folder, s.countries[node]))['L']\
                 for node in range(len(s.countries))])
         EUL = np.sum(EUL, axis=0) * 1000
         for combination in self.chosen_combinations:
-            alpha_list.append(combination['a'])
+            a_list.append(combination['a'])
             EC = np.load(s.EBC_fullname.format(**combination))
             EC = np.mean(np.sum(EC.f.arr_0, axis=0))
             EC_list.append(EC/np.mean(EUL))
 
         legend = r'$\frac{\mathcal{K}_{EU}^{EB}}{\left\langle L_{EU}\right\rangle}$'
         fig, (ax)  = plt.subplots(1, 1, sharex=True)
-        ax.plot(alpha_list, EC_list, '.k', label=legend, ms=10)
+        ax.plot(a_list, EC_list, '.k', label=legend, ms=10)
         str2 = 'constrained' if c=='c' else 'unconstrained'
         str3 = 'synchronized' if f=='s' else 'localized'
-        str4 = str3 + ' ' + str2 + r' flow $\beta={0}$'.format(beta)
+        str4 = str3 + ' ' + str2 + r' flow $\beta={0}$'.format(b)
         ax.set_title(str4, y=1.08, fontsize=15)
         ax.set_xlabel(r'$\alpha$', fontsize=20)
         ax.legend(loc=2)
         plt.tight_layout()
         plt.subplots_adjust(left=0.15)
-        plt.savefig('results/figures/EB_Alpha.png')
+        str5 = s.nodes_name[:7] + s.nodes_name[16:]
+        plt.savefig('results/figures/alpha_{0}.png'.format(str5.format(g=g, b=b, c=c, f=f)))
         plt.close()
         return
 
