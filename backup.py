@@ -181,7 +181,7 @@ class BackupEurope(object):
         ax.yaxis.set(ticks=yticks, ticklabels=ylabels)
         fig.colorbar(cms)
         plt.tight_layout()
-        save_str = 'colormapAG_b{0:.2f}.png'.format(b)
+        save_str = 'cmap_f{0}_c{1}_b{2:.2f}.png'.format(f, c, b)
         plt.savefig(s.figures_folder + save_str)
         print('Saved file "{0}".'.format(save_str))
         plt.close()
