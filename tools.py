@@ -78,7 +78,7 @@ def quantile(quantile, dataset):
     return np.sort(dataset)[int(round(quantile*len(dataset)))]
 
 
-def storage_size(backup_timeseries, q=0.99):
+def storage_size_old(backup_timeseries, q=0.99):
     """
     Docstring
     """
@@ -94,6 +94,26 @@ def storage_size(backup_timeseries, q=0.99):
                 storage[index] = 0
     return max(storage)
 
+def storage_size(backup_timeseries, q=0.99):
+    """
+    """
+    q = quantile(q, backup_timeseries)
+    storage = backup_timeseries - q
+    a = np.zeros(len(storage) + 1)
+    for index, val in enumerate(storage):
+        if val > 0:
+            a[index] -= val
+            a[index + 1] = a[index]
+        else:
+            a[index] += val
+            if a[index] > 0:
+                a[index] = 0
+            a[index + 1] = a[index]
+    return (-min(a), a[:-1], storage) 
+
+
+
+            
 def get_remote_figures():
     if not os.path.exists(s.remote_figures):
         os.mkdir(s.remote_figures)
