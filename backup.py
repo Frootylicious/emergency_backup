@@ -88,12 +88,14 @@ class BackupEurope(object):
         if os.path.isfile(s.EBC_fullname.format(**combination_dict)):
             print('EC-file {0} already exists - skipping.'.format(combination_dict))
         else:
-            combination_caps = np.zeros(len(s.countries))
+#             combination_caps = np.zeros(len(s.countries))
             nodes = np.load(s.nodes_fullname.format(**combination_dict))
             balancing = nodes['balancing']
-            for i, country_backup in enumerate(balancing):
-                combination_caps[i] = to.storage_size(country_backup, quantile)[0]
-            np.savez(s.EBC_fullname.format(**combination_dict), combination_caps)
+#             for i, country_backup in enumerate(balancing):
+#                 combination_caps[i] = to.storage_size(country_backup, quantile)[0]
+            storage_size = to.storage_size(np.sum(balancing, axis=0), q=0.99)[0]
+            np.savez(s.EBC_fullname.format(**combination_dict), storage_size)
+#             np.savez(s.EBC_fullname.format(**combination_dict), combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
 
