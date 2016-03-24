@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from os import listdir
-import regions.classes as cl
+#import regions.classes as cl
 
 def all_combinations():
     names = [name for name in listdir('./results/N')]
@@ -17,7 +17,24 @@ def qq_plot(country, data_touple):
     def _get_load(country):
         return np.load('/home/simon/Dropbox/Root/Data/ISET/ISET_country_%s.npz' %(country))['L']
 
-    def _get_timeseries(country, data_touple):
+    def _get_timeseries(country, data_touple, path_to_data='results/'):
+        """
+        Returns the load in MWh.
+        """
+        # -- Unpacking the touple --
+        names = ['constraint', 'flowscheme', 'alpha', 'gamma', 'beta']
+        data = dict(zip(names, data_touple))
+   
+        countries = ['AT', 'FI', 'NL', 'BA', 'FR', 'NO', 'BE', 'GB', 'PL', 'BG',
+                     'GR', 'PT', 'CH', 'HR', 'RO', 'CZ', 'HU', 'RS', 'DE', 'IE',
+                     'SE', 'DK', 'IT', 'SI', 'ES', 'LU', 'SK', 'EE', 'LV', 'LT']
+        country_dict = dict(zip(countries, list(range(len(countries)))))
+
+        return np.load(path_to_data +
+                       '{constraint}_{flowscheme}_a{alpha:.2f}_g{gamma:.2f}_b{beta:.2f}_N.npz'\
+                       .format(**data))['balancing'][country_dict[country]]
+    
+    def _get_timeseries_old(country, data_touple):
         # -- Unpacking the touple --
         c = data_touple[0]
         f = data_touple[1]
@@ -56,7 +73,7 @@ def qq_plot(country, data_touple):
         return bins[c > quantile][0]
 
     
-    DK = _get_timeseries(country, data_touple)
+    DK = _get_timeseries(country, data_touple, path_to_data='./results/N/')
     cum_dens, bin_edges = _cdf(DK, normed=False)
     cum_df = cum_dens
     cum_dens = cum_dens/float(max(cum_dens))
@@ -172,6 +189,11 @@ def qq_plot(country, data_touple):
         return ((-np.log(q))**(-xi))/sigma2 + mu2
     q_bins = np.asarray([_full_inverse_GEV(q, mu2, sigma2, xi) for q in cum_dens])
     ax2.plot(q_bins, bins, 'b.', markersize=8, label='QQ')
+        
+    ax2.plot(q_bins[cum_dens > 0.99][0], bins[cum_dens > 0.99][0], 'r.', markersize=20)
+    ax2.plot(q_bins[cum_dens > 0.999][0], bins[cum_dens > 0.999][0], 'r.', markersize=20)
+    ax2.plot(q_bins[cum_dens > 0.9999][0], bins[cum_dens > 0.9999][0], 'r.', markersize=20)
+    ax2.plot(q_bins[cum_dens > 0.99999][0], bins[cum_dens > 0.99999][0], 'r.', markersize=20)
     ax2.plot([min(q_bins), max(q_bins)], [min(bins), max(bins)], color=orange, linewidth=2.0)
     ax2.axis([min(q_bins), max(q_bins), min(q_bins), max(q_bins)])
     ax2.set_yticks(bins[0::len(bins)/10.0])
@@ -195,7 +217,8 @@ def qq_plot(country, data_touple):
     #ax2_new_ticks = ['%.6f' % t for t in ax2_new_ticks_]
     #print(ax2_new_ticks_)
     ax2_new.set_yticks(ax2.get_yticks())
-    ax2_new.set_yticklabels(['%.4f' % t for t in [cum_dens[rounded_bins == t][-1] for t in ax2_new_ticks_rounded]])
+    ax2_new.set_yticklabels(['%.5f' % t for t in [cum_dens[bins > t][0] for t in ax2_new_ticks]])
+    #ax2_new.set_yticklabels(['%.4f' % t for t in [cum_dens[rounded_bins == t][-1] for t in ax2_new_ticks_rounded]])
     ax2_new.set_ylim(ax2.get_ylim())
     ax2_new.set_ylabel('Quantile', fontsize=18)
     

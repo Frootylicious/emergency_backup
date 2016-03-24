@@ -1,6 +1,7 @@
 import os
 import settings as s
 import numpy as np
+import matplotlib.pyplot as plt
 
 """
 File with commonly used functions.
@@ -97,19 +98,35 @@ def storage_size_old(backup_timeseries, q=0.99):
 def storage_size(backup_timeseries, q=0.99):
     """
     """
-    q = quantile(q, backup_timeseries)
-    storage = backup_timeseries - q
-    a = np.zeros(len(storage) + 1)
-    for index, val in enumerate(storage):
-        if val > 0:
-            a[index] -= val
-            a[index + 1] = a[index]
-        else:
-            a[index] += -val
-            if a[index] > 0:
-                a[index] = 0
-            a[index + 1] = a[index]
-    return (-min(a), a[:-1], storage) 
+    q = quantile(0.99, backup_timeseries)
+    offset_backup = backup_timeseries - q
+    # plt.plot(offset_backup)
+    # plt.show()
+    storage = np.zeros(len(offset_backup) + 1)
+    # i = 0
+    for index, val in enumerate(offset_backup):
+        # if val > 0:
+            # print(i)
+            # i += 1
+        storage[index] += val
+        if storage[index] < 0:
+                storage[index] = 0
+        storage[index + 1] = storage[index]
+        # if val < 0:
+            # storage[index] += val
+            # if storage[index] < 0:
+            #     storage[index] = 0
+            # storage[index + 1] = storage[index]
+            
+
+    return (max(storage), storage[:-1], offset_backup)
+
+            
+            
+
+    
+
+    
 
 
 
