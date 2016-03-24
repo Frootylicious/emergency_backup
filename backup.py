@@ -92,7 +92,7 @@ class BackupEurope(object):
             nodes = np.load(s.nodes_fullname.format(**combination_dict))
             balancing = nodes['balancing']
             for i, country_backup in enumerate(balancing):
-                combination_caps[i] = to.storage_size(country_backup, quantile)
+                combination_caps[i] = to.storage_size(country_backup, quantile)[0]
             np.savez(s.EBC_fullname.format(**combination_dict), combination_caps)
             print('Saved EC-file: {0}'.format(combination_dict))
         return
@@ -197,7 +197,6 @@ class BackupEurope(object):
             g [float]: value of gamma.
             b [float]: value of beta.
         """
-        s.countries
         N = cl.Nodes(load_filename=s.nodes_fullname.format(c=c, f=f, a=a, g=g, b=b),
                      files=s.files,
                      load_path='',
@@ -210,15 +209,8 @@ class BackupEurope(object):
         for i, n in enumerate(N):
             timeseries[i] = n.load - n.get_solar() - n.get_wind() - to.quantile(0.99,
                     n.get_balancing()) + n.get_export() - n.get_import() + n.get_curtailment()
-#             q = self._quantile(0.99, n.get_balancing())
-#             q1[i] = n.get_balancing() - q
-
 
         EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
-
-#         q1[q1 < 0] = 0
-#         q2 = np.sum(q1, axis=0)/EUL_avg
-
 
         K_EB = np.load(s.EBC_fullname.format(c='c', f='s', a=a, g=g, b=b))
         K_EB = sum(K_EB.f.arr_0) / EUL_avg
@@ -239,10 +231,61 @@ class BackupEurope(object):
         fig.text(x=0.1, y=0.7, s=txt_str1.format(K_EB), fontsize=20)
         fig.text(x=0.1, y=0.6, s=txt_str2, fontsize=15)
         plt.tight_layout()
-#         plt.show()
+        plt.show()
         plt.savefig('results/figures/tsEU_{0}.png'.format(s.nodes_name.format(c=c, f=f, a=a, g=g, b=b)))
         plt.close()
         return
+
+
+    def plot_storage_EU(self, a=0.80, g=1.00, b=1.00, c='c', f='s'):
+        N = cl.Nodes(load_filename=s.nodes_fullname.format(c=c, f=f, a=a, g=g, b=b),
+                     files=s.files,
+                     load_path='',
+                     path=s.iset_folder,
+                     prefix=s.iset_prefix)
+
+        storage_timeseries = np.zeros((30, N[0].nhours))
+        backup_offset = np.zeros((30, N[0].nhours))
+        balancing_timeseries_EU = np.zeros(N[0].nhours)
+
+
+        for i, n in enumerate(N):
+            balancing_timeseries_EU += n.get_balancing()
+            (storage_size, storage_timeseries[i], backup_offset[i]) = to.storage_size(n.get_balancing(), q=0.99)
+
+        (storage_EU, storage_timeseries2, backup_offset2) = to.storage_size(balancing_timeseries_EU)
+
+        EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
+        print('STORAGE_EU: ', storage_EU/EUL_avg)
+        storage_timeseries = np.sum(storage_timeseries, axis=0) / EUL_avg
+        backup_offset = np.sum(backup_offset, axis=0) / EUL_avg
+        storage_timeseries2 /= EUL_avg
+        backup_offset2 /= EUL_avg
+        fig, (ax1, ax2)  = plt.subplots(2, 1, sharex=True)
+        ax1.plot(storage_timeseries, 'r')
+        ax1.plot(backup_offset)
+        ax2.plot(storage_timeseries2, 'r')
+        ax2.plot(backup_offset2)
+        plt.show()
+
+
+    def plot_storage_DK(self, a=0.80, g=1.00, b=1.00, c='c', f='s'):
+        N = cl.Nodes(load_filename=s.nodes_fullname.format(c=c, f=f, a=a, g=g, b=b),
+                        files=s.files,
+                        load_path='',
+                        path=s.iset_folder,
+                        prefix=s.iset_prefix)
+
+        storage_timeseries = np.zeros(N[0].nhours)
+        backup_offset = np.zeros(N[0].nhours)
+
+        (storage_size, storage_timeseries, backup_offset) = to.storage_size(N[21].get_balancing(), q=0.99)
+
+        fig, (ax)  = plt.subplots(1, 1, sharex=True)
+        ax.plot(storage_timeseries, 'r')
+        ax.plot(backup_offset)
+        plt.show()
+
 
 
     def plot_alpha(self, g=1.00, b=1.00, c='c', f='s'):
@@ -287,6 +330,7 @@ class BackupEurope(object):
 
 if __name__ == '__main__':
     B = BackupEurope()
+#     B.plot_storage_DK()
 #     B.plot_colormap()
 #     B.plot_timeseries()
 #     B.plot_timeseries_EU()
