@@ -258,17 +258,28 @@ class BackupEurope(object):
         (storage_EU, storage_timeseries2, backup_offset2) = to.storage_size(balancing_timeseries_EU)
 
         EUL_avg = np.mean(np.sum([x.load for x in N], axis=0))
-        print('STORAGE_EU: ', storage_EU/EUL_avg)
         storage_timeseries = np.sum(storage_timeseries, axis=0) / EUL_avg
         backup_offset = np.sum(backup_offset, axis=0) / EUL_avg
         storage_timeseries2 /= EUL_avg
         backup_offset2 /= EUL_avg
-        fig, (ax1, ax2)  = plt.subplots(2, 1, sharex=True)
+        fig, (ax1, ax2, ax3)  = plt.subplots(3, 1)
         ax1.plot(storage_timeseries, 'r')
         ax1.plot(backup_offset)
-        ax2.plot(storage_timeseries2, 'r')
-        ax2.plot(backup_offset2)
-        plt.show()
+        ax1.set_title('Emergency backup capacity for constrained synchronized network:\n' +
+                r'$\alpha=0.8, \gamma=1, \beta=1$')
+        ax1.set_xlim([0, len(storage_timeseries)])
+        ax2.plot(storage_timeseries2, 'r', label='Emergency backup need')
+        ax2.plot(backup_offset2, label='$B_{EU}-B_{EU}(q=99\%)$')
+        ax2.set_xlim([0, len(storage_timeseries)])
+        ax2.legend(loc=2)
+        ax2.set_ylabel(r'$K_{EU}^{EB}/\left<L_{EU}\right>$')
+        ax2.set_xlabel('Hours')
+        ax3.plot(storage_timeseries2[27275:27400], 'r')
+        ax3.plot(backup_offset2[27275:27400])
+        ax3.plot([0, 27400-27275-1], [0, 0], 'k--', lw=1)
+        ax3.set_xlim([0, 27400-27275-1])
+        ax3.set_xlabel('Hours $-27400$')
+        plt.savefig('results/figures/storageEU.pdf')
 
 
     def plot_storage_DK(self, a=0.80, g=1.00, b=1.00, c='c', f='s'):
@@ -332,7 +343,7 @@ class BackupEurope(object):
 
 if __name__ == '__main__':
     B = BackupEurope()
-#     B.plot_storage_DK()
+    B.plot_storage_EU()
 #     B.plot_colormap()
 #     B.plot_timeseries()
 #     B.plot_timeseries_EU()
