@@ -14,7 +14,7 @@ TODO:
 
 def get_B(values):
     '''
-    Function needed for the multiprocessing. 
+    Function needed for the multiprocessing.
 
     The variables in "values" are packed together to enable multiprocessing.
     values:
@@ -72,11 +72,11 @@ class  BalancingCalculation():
         pool = mp.Pool(cores)
         s = 'Running multiprocessing with {0} jobs on {1} cores.'
         print(s.format(len(self.alpha_list) * len(self.gamma_list) * len(beta_list), cores))
-        pool.map(get_B, product(self.alpha_list, 
+        pool.map(get_B, product(self.alpha_list,
                                 self.gamma_list,
-                                self.beta_list, 
+                                self.beta_list,
                                 [self.constrained],
-                                [self.DC], 
+                                [self.DC],
                                 [self.mode]))
         pool.close()
         pool.join()
@@ -86,9 +86,12 @@ if __name__ == '__main__':
 #     gamma_list = np.linspace(0, 2, 11)
 #     beta_list = np.linspace(0, 1, 3)
 #     beta_list = [0.50, 0.75, 1.00]
-    alpha_list = [0.8]
+    # alpha_list = [0.8]
+    # gamma_list = [1.0]
+    # beta_list = [1.0]
+    alpha_list = np.linspace(0, 1, 21)
     gamma_list = [1.0]
-    beta_list = [1.0]
+    beta_list = [0, np.inf]
     lol = BalancingCalculation(alpha_list = alpha_list,
                                gamma_list = gamma_list,
                                beta_list=beta_list,

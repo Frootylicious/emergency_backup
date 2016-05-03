@@ -77,8 +77,8 @@ class BackupEurope(object):
 
         Args:
             combination_dict [dictionary]: a dictionary containing the desired network parameters.
-            save_paths [string]: the folder where the EBC should be saved to.
-            quantile [float]: the value of the quantile.
+            save_paths       [string]: the folder where the EBC should be saved to.
+            quantile         [float]: the value of the quantile.
 
         '''
         print combination_dict

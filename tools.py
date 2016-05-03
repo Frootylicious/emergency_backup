@@ -79,6 +79,25 @@ def quantile(quantile, dataset):
     return np.sort(dataset)[int(round(quantile*len(dataset)))]
 
 
+def quantile_old(quantile, dataset, cutzeros=False):
+    """
+    Takes a list of numbers, converts it to a list without zeros
+    and returns the value of the 99% quantile.
+    """
+    if cutzeros:
+        # Removing zeros
+        dataset = dataset[np.nonzero(dataset)]
+    # Convert to numpy histogram
+    hist, bin_edges = np.histogram(dataset, bins = 10000, normed = True)
+    dif = np.diff(bin_edges)[0]
+    q = 0
+    for index, val in enumerate(reversed(hist)):
+        q += val*dif
+        if q > 1 - float(quantile):
+            #print 'Found %.3f quantile' % (1 - q)
+            return bin_edges[-index]
+
+
 def storage_size_old(backup_timeseries, q=0.99):
     """
     Docstring
@@ -117,20 +136,20 @@ def storage_size(backup_timeseries, q=0.99):
             # if storage[index] < 0:
             #     storage[index] = 0
             # storage[index + 1] = storage[index]
-            
+
 
     return (max(storage), storage[:-1], offset_backup)
 
-            
-            
-
-    
-
-    
 
 
 
-            
+
+
+
+
+
+
+
 def get_remote_figures():
     if not os.path.exists(s.remote_figures):
         os.mkdir(s.remote_figures)
