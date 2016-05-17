@@ -141,6 +141,25 @@ def storage_size(backup_timeseries, q=0.99):
     return (max(storage), storage[:-1], offset_backup)
 
 
+def storage_size_relative(backup_generation_timeseries, beta_kapacity):
+    G = np.array(backup_generation_timeseries)
+    K = beta_kapacity
+
+    K_minus_G = K - G
+
+    S_n_max = 0
+
+    S_n = np.empty_like(K_minus_G)
+
+    for t, K_G in enumerate(K_minus_G):
+        if t == 0:
+            S_n[t] = np.min((S_n_max, K_G))
+        else:
+            S_n[t] = np.min((S_n_max, S_n[t - 1] + K_G))
+
+    return(S_n_max - np.min(S_n), S_n)
+
+
 
 
 

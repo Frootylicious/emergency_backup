@@ -4,6 +4,7 @@ import numpy as np
 from data_solving import Data
 from itertools import product
 import multiprocessing as mp
+from tqdm import tqdm
 import os
 
 
@@ -43,16 +44,15 @@ def get_B(values):
         print('file: "{0}" already exists - skipping.'.format(f))
         return
     else:
-        data = Data(a=a, g=g, b=b, mode=mode, constrained=constrained, DC=DC)
+        data = Data(a=a, g=g, b=b, mode=mode, constrained=constrained, DC=DC, save_F=True)
 
 
-
-
-class  BalancingCalculation():
+class BalancingCalculation():
     '''
     Class to hold the balancing timeseries.
     It needs a list of alphas, gammas and betas to iterate through.
     '''
+
     def __init__(self, alpha_list=[0.8], gamma_list=[1.0], beta_list=[1.0],
                  constrained=False, DC=False, mode='square'):
         self.alpha_list = alpha_list
@@ -61,7 +61,6 @@ class  BalancingCalculation():
         self.constrained = constrained
         self.DC = DC
         self.mode = mode
-
 
     def run(self):
         '''
@@ -72,30 +71,36 @@ class  BalancingCalculation():
         pool = mp.Pool(cores)
         s = 'Running multiprocessing with {0} jobs on {1} cores.'
         print(s.format(len(self.alpha_list) * len(self.gamma_list) * len(beta_list), cores))
-        pool.map(get_B, product(self.alpha_list,
+        tqdm(pool.imap_unordered(get_B, product(self.alpha_list,
                                 self.gamma_list,
                                 self.beta_list,
                                 [self.constrained],
                                 [self.DC],
-                                [self.mode]))
+                                [self.mode])))
+        # pool.map(get_B, product(self.alpha_list,
+        #                         self.gamma_list,
+        #                         self.beta_list,
+        #                         [self.constrained],
+        #                         [self.DC],
+        #                         [self.mode]))
         pool.close()
         pool.join()
 
 if __name__ == '__main__':
-#     alpha_list = np.linspace(0, 1, 11)
-#     gamma_list = np.linspace(0, 2, 11)
-#     beta_list = np.linspace(0, 1, 3)
-#     beta_list = [0.50, 0.75, 1.00]
+    #     alpha_list = np.linspace(0, 1, 11)
+    #     gamma_list = np.linspace(0, 2, 11)
+    #     beta_list = np.linspace(0, 1, 3)
+    #     beta_list = [0.50, 0.75, 1.00]
     # alpha_list = [0.8]
     # gamma_list = [1.0]
     # beta_list = [1.0]
-    alpha_list = np.linspace(0, 1, 21)
+    alpha_list = np.linspace(0, 1, 51)
     gamma_list = [1.0]
-    beta_list = [0, np.inf]
-    lol = BalancingCalculation(alpha_list = alpha_list,
-                               gamma_list = gamma_list,
+    beta_list = [np.inf]
+    lol = BalancingCalculation(alpha_list=alpha_list,
+                               gamma_list=gamma_list,
                                beta_list=beta_list,
                                constrained=True,
-                               DC = True,
+                               DC=True,
                                mode='square')
     lol.run()

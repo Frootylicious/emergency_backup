@@ -31,14 +31,23 @@ link_list = ['AUT to CHE', 'AUT to CZE', 'AUT to HUN', 'AUT to DEU',
              'DEU to DNK', 'DEU to LUX', 'SWE to DNK', 'ITA to SVN',
              'EST to LVA', 'LVA to LTU']
 
+link_distances= [686, 250, 217, 523, 766, 278, 397, 82, 914, 175,
+                 358, 577, 289, 201, 262, 342, 436, 879, 110, 105,
+                 418, 483, 464, 520, 520, 808, 534, 524, 298, 328,
+                 105, 503, 753, 691, 305, 371, 117, 642, 446, 281,
+                 291, 317, 163, 812, 356, 591, 523, 491, 277, 263]
+
+
+
 # FILENAMES ----------------------------------------------------------------------------------------
 nodes_folder    = results_folder + 'N/'
-nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
+# nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
+nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b}'
 nodes_fullname  = nodes_folder + nodes_name + '_N.npz'
 
 links_folder    = results_folder + 'F/'
 links_fullname  = links_folder + nodes_name + '_F.npz'
- 
+
 copper_folder   = results_folder + 'copperflows/'
 copper_name     = 'copperflow_a{0:.2f}_g{1:.2f}.npy'
 copper_fullname = copper_folder + copper_name
