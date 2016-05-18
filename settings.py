@@ -1,5 +1,7 @@
 # FOLDERS ------------------------------------------------------------------------------------------
-iset_folder    = 'data/'
+data_folder    = 'data/'
+iset_folder    = data_folder + 'ISET/'
+bialek_folder  = data_folder + 'Bialek/'
 results_folder = 'results/'
 figures_folder = results_folder + 'figures/'
 remote_figures_folder = '10.25.6.157:/home/kofoed/emergency_backup/results/figures/'
@@ -40,10 +42,12 @@ link_distances= [686, 250, 217, 523, 766, 278, 397, 82, 914, 175,
 
 
 # FILENAMES ----------------------------------------------------------------------------------------
-nodes_folder    = results_folder + 'N/'
-# nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
-nodes_name      = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b}'
-nodes_fullname  = nodes_folder + nodes_name + '_N.npz'
+nodes_folder       = results_folder + 'N/'
+nodes_name         = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b:.2f}'
+nodes_name_inf     = '{c}_{f}_a{a:.2f}_g{g:.2f}_b{b}'
+nodes_fullname     = nodes_folder + nodes_name + '_N.npz'
+nodes_fullname_inf = nodes_folder + nodes_name_inf + '_N.npz'
+
 
 links_folder    = results_folder + 'F/'
 links_fullname  = links_folder + nodes_name + '_F.npz'

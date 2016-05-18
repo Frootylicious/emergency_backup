@@ -222,13 +222,15 @@ def Figure2(resolution=100):
 
     for i, alpha in tqdm(enumerate(alphas)):
         for beta in (0.00, np.inf):
-            N = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=beta, g=1.00))
-            balancing_DE = N.f.balancing[s.country_dict['DE']]
             if beta == 0.00:
+                N = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=beta, g=1.00))
+                balancing_DE = N.f.balancing[s.country_dict['DE']]
                 K_B_n_b0_q9[i] = t.quantile(0.9, balancing_DE)
                 K_B_n_b0_q99[i] = t.quantile(0.99, balancing_DE)
                 K_B_n_b0_q999[i] = t.quantile(0.999, balancing_DE)
             else:
+                N = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=alpha, b=beta, g=1.00))
+                balancing_DE = N.f.balancing[s.country_dict['DE']]
                 K_B_n_binf_q9[i] = t.quantile(0.9, balancing_DE)
                 K_B_n_binf_q99[i] = t.quantile(0.99, balancing_DE)
                 K_B_n_binf_q999[i] = t.quantile(0.999, balancing_DE)
@@ -281,7 +283,7 @@ def Figure4(summer_week=30, winter_week=60):
     Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(0.80, 1.0)
 
     N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
-    N_binf = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+    N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
 
     G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
     G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
@@ -343,7 +345,7 @@ def Figure5():
     avg_L_DE = np.mean(L_EU[s.country_dict['DE']])
 
     N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=0.00, g=1.00))
-    N_binf = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
+    N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
 
     G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
     G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
@@ -403,7 +405,7 @@ def Figure6():
 
     # Loading the nodes-objects from the solved networks.
     N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=0.00, g=1.00))
-    N_binf = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
+    N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
 
     # Extracting the backup generation of DE.
     G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
@@ -600,7 +602,7 @@ def Figure7():
 
                 # Loading the nodes-object.
                 N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=0.00, g=1.00))
-                N_binf = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
+                N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
 
                 # Extracting the backup generation of DE.
                 G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
@@ -660,7 +662,7 @@ def Figure7():
 
             # Loading the nodes-object.
             N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
-            N_binf = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+            N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
 
             # Extracting the backup generation of DE.
             G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
@@ -698,7 +700,7 @@ def Figure7():
         avg_L_DE = np.mean(L_EU[s.country_dict['DE']])
 
         N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
-        N_binf = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+        N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
 
         # Extracting the backup generation of DE.
         G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
