@@ -758,8 +758,8 @@ def Figure7():
     F73_F74_F75(beta_b=0.75)
 
 def Figure8():
+# F81
 
-    # Whether or not to load data.
 
     def F81(load=True):
         # Which alphas and gammas we want to look at.
@@ -773,7 +773,7 @@ def Figure8():
             data_b0 = load_data_b0.f.arr_0
             data_binf = load_data_binf.f.arr_0
         else:
-            data_b0 = np.empty((len(beta_b_list), len(alpha_list)))
+            data_b0 = np.empty((len(beta_b_list), len(gamma_list)))
             data_binf = np.empty_like(data_b0)
             for i, gamma in tqdm(enumerate(gamma_list)):
 
@@ -827,6 +827,10 @@ def Figure8():
     F81(load=False)
 
 def Figure9():
+# 2 figures:
+# F91 is the sum of the transmission capacity time the link length in the unit of GW/1000 km and as
+# a function of alpha.
+# F92 is the same as F91 but without the multiplication of the link length.
 
     alpha_list = np.linspace(0, 1, 51)
 
@@ -877,10 +881,16 @@ def Figure9():
     plt.close()
 
 def Figure10():
+# Three figures:
+# F101 is the mean of the backup generation as a function og the transmission beta
+# F102 is the 90 %, 99 % and 99.9 % quantile of the backup generation as a function of the
+# transmission beta.
+# F103 is the emergency backup storage size, with a backup beta of 0.7 as a function of the
+# transmission beta.
 
     alpha = 0.80
     gamma = 1.00
-    beta_T_list = np.linspace(0, 1.5, 16)
+    beta_T_list = np.linspace(0, 1.5, 31)
 
     Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(alpha, gamma)
 
@@ -909,7 +919,7 @@ def Figure10():
     fig1, (ax1) = plt.subplots(1, 1)
     ax1.plot(beta_T_list, data1)
     ax1.set_xlabel(r'$\beta^T$', fontsize=20)
-    ax1.set_ylabel(r'$\langle G^B_n \rangle / \langle L_n \rangle$', fontsize=15)
+    ax1.set_ylabel(r'$\langle G^B_n \rangle / \langle L_n \rangle$', fontsize=20)
     ax1.set_xlim([beta_T_list[0], beta_T_list[-1]])
     fig1.savefig(s.figures_folder + 'FIGURE10/' + 'F101.pdf')
 
@@ -918,18 +928,20 @@ def Figure10():
     ax2.plot(beta_T_list, data2[1], label=r'$\kappa^B_n = 0.99$')
     ax2.plot(beta_T_list, data2[2], label=r'$\kappa^B_n = 0.999$')
     ax2.set_xlabel(r'$\beta^T$', fontsize=20)
-    ax2.set_ylabel(r'$\kappa^B_n / \langle L_n \rangle$', fontsize=15)
+    ax2.set_ylabel(r'$\kappa^B_n / \langle L_n \rangle$', fontsize=20)
     ax2.legend(loc='upper right')
     ax2.set_xlim([beta_T_list[0], beta_T_list[-1]])
     fig2.savefig(s.figures_folder + 'FIGURE10/' + 'F102.pdf')
 
     fig3, (ax3) = plt.subplots(1, 1)
     ax3.plot(beta_T_list, data3)
+    ax3.plot(beta_T_list, data3, '.')
     ax3.set_xlabel(r'$\beta^T$', fontsize=20)
-    ax3.set_ylabel(r'$\kappa^S$', fontsize=15)
+    ax3.set_ylabel(r'$\kappa^S_n$', fontsize=20)
     ax3.set_xlim([beta_T_list[0], beta_T_list[-1]])
     fig3.savefig(s.figures_folder + 'FIGURE10/' + 'F103.pdf')
+#     plt.show()
     plt.close()
 
 
-Figure10()
+# Figure10()

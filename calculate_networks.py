@@ -89,7 +89,7 @@ class BalancingCalculation():
 if __name__ == '__main__':
     #     alpha_list = np.linspace(0, 1, 11)
     #     gamma_list = np.linspace(0, 2, 11)
-    beta_list = np.linspace(0, 1.5, 16)
+    beta_list = np.linspace(0, 1.5, 61)
     #     beta_list = [0.50, 0.75, 1.00]
     alpha_list = [0.8]
 #     gamma_list = [1.0]
