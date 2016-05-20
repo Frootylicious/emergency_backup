@@ -109,7 +109,7 @@ class Data():
                 msgCopper = ('unconstrained DC-network with mode = "{0}"\nALPHA ='
                         ' {1:.2f}, GAMMA = {2:.2f}').format(mode, self.a, self.g)
                 M_copperflows, F_copperflows = dc.DC_solve(self.N,
-                                                           mode=mode,
+                                                           mode='copper ' + mode,
                                                            msg=msgCopper)
                 np.save(s.copper_fullname.format(self.a, self.g), F_copperflows)
                 print('Saved copper flows to file:{0}'.format(s.copper_name.format(self.a,

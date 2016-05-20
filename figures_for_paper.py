@@ -694,7 +694,7 @@ def Figure7():
 
         fig1.savefig(s.figures_folder + 'FIGURE7/' + 'F72.pdf')
 
-    def F73_and_F74(beta_b=0.75):
+    def F73_F74_F75(beta_b=0.75):
         K = beta_b
         Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(0.8, 1.0)
         avg_L_DE = np.mean(L_EU[s.country_dict['DE']])
@@ -738,13 +738,95 @@ def Figure7():
         ax4.set_ylabel(r'$E/\left<L_n\right>$')
         ax4.set_xlim((0, time4[1] - time4[0]))
         fig4.savefig(s.figures_folder + 'FIGURE7/' + 'F74.pdf')
+
+        time5 = [53500 - 134, 53500 - 62]
+
+        fig5, (ax5) = plt.subplots(1, 1)
+        ax5.plot(G_minus_K_binf[time5[0]:time5[1]], label=r'$G^B_n(t) - K^B_n$')
+        ax5.plot(a_binf[1][time5[0]:time5[1]], label=r'$S_n(t)$')
+
+        ax5.legend(loc='lower left')
+        ax5.set_xlabel(r'$t$')
+        ax5.set_ylabel(r'$E/\left<L_n\right>$')
+        ax5.set_xlim((0, time5[1] - time5[0]))
+        fig5.savefig(s.figures_folder + 'FIGURE7/' + 'F75.pdf')
         plt.close()
 
-    F71(load=False)
-    F72(load=False)
-    F73_and_F74(beta_b=0.75)
+
+#     F71(load=False)
+#     F72(load=False)
+    F73_F74_F75(beta_b=0.75)
 
 def Figure8():
+
+    # Whether or not to load data.
+
+    def F81(load=True):
+        # Which alphas and gammas we want to look at.
+        alpha = 0.80
+        gamma_list = np.linspace(0, 2, 51)
+        beta_b_list = np.linspace(0.25, 1, 4)
+
+        if load:
+            load_data_b0 = np.load(s.figures_folder + 'FIGURE8/' + 'data81_b0.npz')
+            load_data_binf = np.load(s.figures_folder + 'FIGURE8/' + 'data81_binf.npz')
+            data_b0 = load_data_b0.f.arr_0
+            data_binf = load_data_binf.f.arr_0
+        else:
+            data_b0 = np.empty((len(beta_b_list), len(alpha_list)))
+            data_binf = np.empty_like(data_b0)
+            for i, gamma in tqdm(enumerate(gamma_list)):
+
+                # Loading the data from ISET.
+                Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(0.80,
+                        gamma)
+
+                # Calculating average load for DE
+                avg_L_DE = np.mean(L_EU[s.country_dict['DE']])
+
+                # Loading the nodes-object.
+                N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=gamma))
+                N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=gamma))
+
+                # Extracting the backup generation of DE.
+                G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
+                G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+
+                # Dividing by the average load to get relative units and converting to GW.
+                G_B_DE_b0 /= (avg_L_DE * 1000)
+                G_B_DE_binf /= (avg_L_DE * 1000)
+
+                for j, beta_b in tqdm(enumerate(beta_b_list)):
+
+                    data_b0[j, i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
+                    data_binf[j, i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
+
+            # Saving to files.
+            np.savez_compressed(s.figures_folder + 'FIGURE8/' + 'data81_b0.npz', data_b0)
+            np.savez_compressed(s.figures_folder + 'FIGURE8/' + 'data81_binf.npz', data_binf)
+
+        # Plotting Figure6.1
+        fig1, (ax1) = plt.subplots(1, 1)
+        ax1.plot(gamma_list, data_b0[0], '--r', label=r'$\beta^B = 0.25, \beta^T=0$')
+        ax1.plot(gamma_list, data_b0[1], '--b', label=r'$\beta^B  = 0.50, \beta^T=0$')
+        ax1.plot(gamma_list, data_b0[2], '--g', label=r'$\beta^B  = 0.75, \beta^T=0$')
+        ax1.plot(gamma_list, data_b0[3], '--c', label=r'$\beta^B  = 1.00, \beta^T=0$')
+
+        ax1.plot(gamma_list, data_binf[0], 'r', label=r'$\beta^B  = 0.25, \beta^T=\infty$')
+        ax1.plot(gamma_list, data_binf[1], 'b', label=r'$\beta^B  = 0.50, \beta^T=\infty$')
+        ax1.plot(gamma_list, data_binf[2], 'g', label=r'$\beta^B  = 0.75, \beta^T=\infty$')
+        ax1.plot(gamma_list, data_binf[3], 'c', label=r'$\beta^B  = 1.00, \beta^T=\infty$')
+
+        ax1.legend(loc='upper right', ncol=2)
+        ax1.set_yscale('log')
+        ax1.set_xlabel(r'$\gamma$')
+        ax1.set_ylabel(r'$\mathcal{K}^S_n$')
+        # fig1.show()
+
+        fig1.savefig(s.figures_folder + 'FIGURE8/' + 'F81.pdf')
+    F81(load=False)
+
+def Figure9():
 
     alpha_list = np.linspace(0, 1, 51)
 
@@ -781,7 +863,7 @@ def Figure8():
     ax1.set_xlabel(r'$\alpha$', fontsize=20)
     ax1.set_ylabel(r'$\sum_l \kappa^T_l dl$', fontsize=15)
     ax1.set_xlim((0, 1))
-    fig1.savefig(s.figures_folder + 'FIGURE8/' + 'F81.pdf')
+    fig1.savefig(s.figures_folder + 'FIGURE9/' + 'F91.pdf')
     plt.close()
 
     fig2, (ax2) = plt.subplots(1, 1)
@@ -791,8 +873,63 @@ def Figure8():
     ax2.set_xlabel(r'$\alpha$', fontsize=20)
     ax2.set_ylabel(r'$\sum_l \kappa^T_l$', fontsize=15)
     ax2.set_xlim((0, 1))
-    fig2.savefig(s.figures_folder + 'FIGURE8/' + 'F82.pdf')
+    fig2.savefig(s.figures_folder + 'FIGURE9/' + 'F92.pdf')
     plt.close()
 
-# Figure8()
+def Figure10():
 
+    alpha = 0.80
+    gamma = 1.00
+    beta_T_list = np.linspace(0, 1.5, 16)
+
+    Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(alpha, gamma)
+
+    data1 = np.empty_like(beta_T_list)
+    data2 = np.empty((len(beta_T_list), len(beta_T_list)))
+    data3 = np.empty_like(beta_T_list)
+
+    for i, beta_T in tqdm(enumerate(beta_T_list)):
+        N = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=beta_T, g=gamma))
+
+        # Calculating average load for DE
+        avg_L_DE = np.mean(L_EU[s.country_dict['DE']])
+
+        # Extracting the backup generation of DE.
+        G_B_DE = N.f.balancing[s.country_dict['DE']]
+
+        # Dividing by the average load to get relative units and converting to GW.
+        G_B_DE /= (avg_L_DE * 1000)
+
+        data1[i] = np.mean(G_B_DE)
+        data2[0, i] = t.quantile_old(0.9, G_B_DE)
+        data2[1, i] = t.quantile_old(0.99, G_B_DE)
+        data2[2, i] = t.quantile_old(0.999, G_B_DE)
+        data3[i] = t.storage_size_relative(G_B_DE, 0.7)[0]
+
+    fig1, (ax1) = plt.subplots(1, 1)
+    ax1.plot(beta_T_list, data1)
+    ax1.set_xlabel(r'$\beta^T$', fontsize=20)
+    ax1.set_ylabel(r'$\langle G^B_n \rangle / \langle L_n \rangle$', fontsize=15)
+    ax1.set_xlim([beta_T_list[0], beta_T_list[-1]])
+    fig1.savefig(s.figures_folder + 'FIGURE10/' + 'F101.pdf')
+
+    fig2, (ax2) = plt.subplots(1, 1)
+    ax2.plot(beta_T_list, data2[0], label=r'$\kappa^B_n = 0.9$')
+    ax2.plot(beta_T_list, data2[1], label=r'$\kappa^B_n = 0.99$')
+    ax2.plot(beta_T_list, data2[2], label=r'$\kappa^B_n = 0.999$')
+    ax2.set_xlabel(r'$\beta^T$', fontsize=20)
+    ax2.set_ylabel(r'$\kappa^B_n / \langle L_n \rangle$', fontsize=15)
+    ax2.legend(loc='upper right')
+    ax2.set_xlim([beta_T_list[0], beta_T_list[-1]])
+    fig2.savefig(s.figures_folder + 'FIGURE10/' + 'F102.pdf')
+
+    fig3, (ax3) = plt.subplots(1, 1)
+    ax3.plot(beta_T_list, data3)
+    ax3.set_xlabel(r'$\beta^T$', fontsize=20)
+    ax3.set_ylabel(r'$\kappa^S$', fontsize=15)
+    ax3.set_xlim([beta_T_list[0], beta_T_list[-1]])
+    fig3.savefig(s.figures_folder + 'FIGURE10/' + 'F103.pdf')
+    plt.close()
+
+
+Figure10()
