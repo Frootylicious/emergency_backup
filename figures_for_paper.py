@@ -105,6 +105,7 @@ def G_B(name):
 
 
 def Figure1():
+# F1 shows the distribution of 
     Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(0.8, 1.0)
     data_EU = G_B_EU / avg_L_EU
 
@@ -890,7 +891,7 @@ def Figure10():
 
     alpha = 0.80
     gamma = 1.00
-    beta_T_list = np.linspace(0, 1.5, 31)
+    beta_T_list = np.linspace(0, 1.5, 61)
 
     Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(alpha, gamma)
 
