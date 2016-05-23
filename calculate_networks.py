@@ -87,16 +87,9 @@ class BalancingCalculation():
         pool.join()
 
 if __name__ == '__main__':
-    #     alpha_list = np.linspace(0, 1, 11)
-    #     gamma_list = np.linspace(0, 2, 11)
-    beta_list = np.linspace(0, 1.5, 61)
-    #     beta_list = [0.50, 0.75, 1.00]
-    alpha_list = [0.8]
-#     gamma_list = [1.0]
-    # beta_list = [1.0]
-#     alpha_list = np.linspace(0, 1, 51)
     gamma_list = [1.0]
-#     beta_list = [np.inf]
+    alpha_list = [0.00]
+    beta_list = [0.00, np.inf]
     lol = BalancingCalculation(alpha_list=alpha_list,
                                gamma_list=gamma_list,
                                beta_list=beta_list,
