@@ -105,7 +105,7 @@ def G_B(name):
 
 
 def Figure1():
-# F1 shows the distribution of 
+# F1 shows the distribution of
     Gw_EU, Gs_EU, L_EU, avg_L_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU = set_data(0.8, 1.0)
     data_EU = G_B_EU / avg_L_EU
 
@@ -428,9 +428,15 @@ def Figure6():
         load_data_binf = np.load(s.figures_folder + 'FIGURE6/' + 'data_binf.npz')
         data_b0 = load_data_b0.f.arr_0
         data_binf = load_data_binf.f.arr_0
+        load_data_b0_rnd = np.load(s.figures_folder + 'FIGURE6/' + 'data_b0_rnd.npz')
+        load_data_binf_rnd = np.load(s.figures_folder + 'FIGURE6/' + 'data_binf_rnd.npz')
+        data_b0_rnd = load_data_b0_rnd.f.arr_0
+        data_binf_rnd = load_data_binf_rnd.f.arr_0
     else:
         data_b0 = np.empty((len(K_range), len(t_range)))
         data_binf = np.empty_like(data_b0)
+        data_b0_rnd = np.empty((len(K_range), len(t_range)))
+        data_binf_rnd = np.empty_like(data_b0)
         for i, K in tqdm(enumerate(K_range)):
             for j, dt in tqdm(enumerate(t_range)):
 
@@ -438,13 +444,23 @@ def Figure6():
                 G_minus_K_b0 = [G - K if G - K >= 0 else 0 for G in G_B_DE_b0]
                 G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
 
+                # Randomizing
+                G_minus_K_b0_rnd = np.copy(G_minus_K_b0)
+                G_minus_K_binf_rnd = np.copy(G_minus_K_binf)
+                np.random.shuffle(G_minus_K_b0_rnd)
+                np.random.shuffle(G_minus_K_binf_rnd)
+
                 # Getting indexes for nonzero-elements
                 nonzero_b0 = np.nonzero(G_minus_K_b0)[0]
                 nonzero_binf = np.nonzero(G_minus_K_binf)[0]
+                nonzero_b0_rnd = np.nonzero(G_minus_K_b0_rnd)[0]
+                nonzero_binf_rnd = np.nonzero(G_minus_K_binf_rnd)[0]
 
                 # Number of qualified hours e.g. nonzero elements.
                 N_qh_b0 = len(nonzero_b0)
                 N_qh_binf = len(nonzero_binf)
+                N_qh_b0_rnd = len(nonzero_b0_rnd)
+                N_qh_binf_rnd = len(nonzero_binf_rnd)
 
                 # Summing all the sums.
                 data_b0[i, j] = np.sum([np.sum(G_minus_K_b0[t:t + dt])
@@ -452,10 +468,18 @@ def Figure6():
                 data_binf[i, j] = np.sum([np.sum(G_minus_K_binf[t:t + dt])
                                           for t in nonzero_binf]) / N_qh_binf
 
+                data_b0_rnd[i, j] = np.sum([np.sum(G_minus_K_b0_rnd[t:t + dt])
+                                        for t in nonzero_b0_rnd]) / N_qh_b0_rnd
+                data_binf_rnd[i, j] = np.sum([np.sum(G_minus_K_binf_rnd[t:t + dt])
+                                          for t in nonzero_binf_rnd]) / N_qh_binf_rnd
+
         # Saving to files.
         np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data_b0.npz', data_b0)
         np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data_binf.npz', data_binf)
+        np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data_b0_rnd.npz', data_b0_rnd)
+        np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data_binf_rnd.npz', data_binf_rnd)
 
+# PLOTTING NON-RANDOM ------------------------------------------------------------------------------
     # Plotting Figure6.1
     fig1, (ax1) = plt.subplots(1, 1)
     ax1.plot(t_range, data_b0[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
@@ -575,6 +599,125 @@ def Figure6():
 
     fig5.savefig(s.figures_folder + 'FIGURE6/' + 'F65.pdf')
 
+# PLOTTING RANDOM ------------------------------------------------------------------------------
+    # Plotting Figure6.1
+    fig1_rnd, (ax1_rnd) = plt.subplots(1, 1)
+    ax1_rnd.plot(t_range, data_b0_rnd[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+    ax1_rnd.plot(t_range, data_b0_rnd[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+    ax1_rnd.plot(t_range, data_b0_rnd[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+    ax1_rnd.plot(t_range, data_b0_rnd[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+
+    ax1_rnd.plot(t_range, data_binf_rnd[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+    ax1_rnd.plot(t_range, data_binf_rnd[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+    ax1_rnd.plot(t_range, data_binf_rnd[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+    ax1_rnd.plot(t_range, data_binf_rnd[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+
+    ax1_rnd.legend(loc='upper left', ncol=2)
+    ax1_rnd.set_xlim([1, 2 * 7 * 24])
+    ax1_rnd.set_xlabel(r'$\Delta t$')
+    ax1_rnd.set_ylabel(r'$E^{EB}_n(\Delta t)$')
+
+    fig1_rnd.savefig(s.figures_folder + 'FIGURE6/' + 'F61_rnd.pdf')
+
+    # Plotting Figure6.2
+    fig2_rnd, (ax2_rnd) = plt.subplots(1, 1)
+    ax2_rnd.plot(t_range, data_b0_rnd[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+    ax2_rnd.plot(t_range, data_b0_rnd[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+    ax2_rnd.plot(t_range, data_b0_rnd[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+    ax2_rnd.plot(t_range, data_b0_rnd[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+
+    ax2_rnd.plot(t_range, data_binf_rnd[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+    ax2_rnd.plot(t_range, data_binf_rnd[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+    ax2_rnd.plot(t_range, data_binf_rnd[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+    ax2_rnd.plot(t_range, data_binf_rnd[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+
+    ax2_rnd.set_yscale('log')
+
+    ax2_rnd.legend(loc='lower center', ncol=2)
+    ax2_rnd.set_xlim([1, 2 * 7 * 24])
+    ax2_rnd.set_xlabel(r'$\Delta t$')
+    ax2_rnd.set_ylabel(r'$E^{EB}_n(\Delta t)$')
+
+    fig2_rnd.savefig(s.figures_folder + 'FIGURE6/' + 'F62_rnd.pdf')
+
+    # Plotting Figure 6.3
+    fig3_rnd, (ax3_rnd) = plt.subplots(1, 1)
+    ax3_rnd.plot(t_range, data_b0_rnd[0] / t_range, '--r',
+             label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+    ax3_rnd.plot(t_range, data_b0_rnd[1] / t_range, '--b',
+             label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+    ax3_rnd.plot(t_range, data_b0_rnd[2] / t_range, '--g',
+             label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+    ax3_rnd.plot(t_range, data_b0_rnd[3] / t_range, '--c',
+             label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+
+    ax3_rnd.plot(t_range, data_binf_rnd[0] / t_range, 'r',
+             label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+    ax3_rnd.plot(t_range, data_binf_rnd[1] / t_range, 'b',
+             label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+    ax3_rnd.plot(t_range, data_binf_rnd[2] / t_range, 'g',
+             label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+    ax3_rnd.plot(t_range, data_binf_rnd[3] / t_range, 'c',
+             label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+
+    ax3_rnd.legend(loc='upper center', ncol=2)
+    ax3_rnd.set_xlim([1, 2 * 7 * 24])
+    ax3_rnd.set_xlabel(r'$\Delta t$')
+    ax3_rnd.set_ylabel(r'$E^{EB}_n(\Delta t)/\Delta t$')
+
+    fig3_rnd.savefig(s.figures_folder + 'FIGURE6/' + 'F63_rnd.pdf')
+
+    # Plotting Figure 6.4 (loglog of 6.3)
+    fig4_rnd, (ax4_rnd) = plt.subplots(1, 1)
+    ax4_rnd.plot(t_range, data_b0_rnd[0] / t_range, '--r',
+             label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+    ax4_rnd.plot(t_range, data_b0_rnd[1] / t_range, '--b',
+             label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+    ax4_rnd.plot(t_range, data_b0_rnd[2] / t_range, '--g',
+             label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+    ax4_rnd.plot(t_range, data_b0_rnd[3] / t_range, '--c',
+             label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+
+    ax4_rnd.plot(t_range, data_binf_rnd[0] / t_range, 'r',
+             label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+    ax4_rnd.plot(t_range, data_binf_rnd[1] / t_range, 'b',
+             label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+    ax4_rnd.plot(t_range, data_binf_rnd[2] / t_range, 'g',
+             label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+    ax4_rnd.plot(t_range, data_binf_rnd[3] / t_range, 'c',
+             label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+
+    ax4_rnd.set_yscale('log')
+    ax4_rnd.set_xscale('log')
+
+    ax4_rnd.legend(loc='lower left', ncol=2)
+    ax4_rnd.set_xlim([1, 2 * 7 * 24])
+    ax4_rnd.set_xlabel(r'$\Delta t$')
+    ax4_rnd.set_ylabel(r'$E^{EB}_n(\Delta t)/\Delta t$')
+
+    fig4_rnd.savefig(s.figures_folder + 'FIGURE6/' + 'F64_rnd.pdf')
+
+    # Plotting Figure6.5 (loglog version of 6.2)
+    fig5, (ax5) = plt.subplots(1, 1)
+    ax5.plot(t_range, data_b0_rnd[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+    ax5.plot(t_range, data_b0_rnd[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+    ax5.plot(t_range, data_b0_rnd[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+    ax5.plot(t_range, data_b0_rnd[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+
+    ax5.plot(t_range, data_binf_rnd[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+    ax5.plot(t_range, data_binf_rnd[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+    ax5.plot(t_range, data_binf_rnd[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+    ax5.plot(t_range, data_binf_rnd[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+
+    ax5.set_yscale('log')
+    ax5.set_xscale('log')
+
+    ax5.legend(loc='upper left', ncol=2)
+    ax5.set_xlim([1, 2 * 7 * 24])
+    ax5.set_xlabel(r'$\Delta t$')
+    ax5.set_ylabel(r'$E^{EB}_n(\Delta t)$')
+
+    fig5.savefig(s.figures_folder + 'FIGURE6/' + 'F65_rnd.pdf')
 
 def Figure7():
 
@@ -622,7 +765,7 @@ def Figure7():
             np.savez_compressed(s.figures_folder + 'FIGURE7/' + 'data71_b0.npz', data_b0)
             np.savez_compressed(s.figures_folder + 'FIGURE7/' + 'data71_binf.npz', data_binf)
 
-        # Plotting Figure6.1
+        # Plotting Figure7.1
         fig1, (ax1) = plt.subplots(1, 1)
         ax1.plot(alpha_list, data_b0[0], '--r', label=r'$\beta^B = 0.25, \beta^T=0$')
         ax1.plot(alpha_list, data_b0[1], '--b', label=r'$\beta^B  = 0.50, \beta^T=0$')
@@ -710,12 +853,17 @@ def Figure7():
         # Dividing by the average load to get relative units and converting to GW.
         G_B_DE_b0 /= (avg_L_DE * 1000)
         G_B_DE_binf /= (avg_L_DE * 1000)
+        G_B_DE_binf_rnd = np.copy(G_B_DE_binf) 
+        np.random.shuffle(G_B_DE_binf_rnd)
 
         G_minus_K_b0 = [G - K if G - K >= 0 else 0 for G in G_B_DE_b0]
         G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
+        G_minus_K_binf_rnd = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf_rnd]
+
 
         a_b0 = t.storage_size_relative(G_B_DE_b0[:], K)
         a_binf = t.storage_size_relative(G_B_DE_binf[:], K)
+        a_binf_rnd = t.storage_size_relative(G_B_DE_binf_rnd[:], K)
 
         fig3, (ax3) = plt.subplots(1, 1)
         ax3.plot(G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
@@ -727,6 +875,17 @@ def Figure7():
         ax3.set_xlim((0, len(G_minus_K_binf)))
 
         fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F73.pdf')
+
+        fig3_rnd, (ax3_rnd) = plt.subplots(1, 1)
+        ax3_rnd.plot(G_minus_K_binf_rnd, label=r'$G^B_n(t) - K^B_n$')
+        ax3_rnd.plot(a_binf_rnd[1], label=r'$S_n(t)$')
+
+        ax3_rnd.legend(loc='lower left')
+        ax3_rnd.set_xlabel(r'$t$')
+        ax3_rnd.set_ylabel(r'$E/\left<L_n\right>$')
+        ax3_rnd.set_xlim((0, len(G_minus_K_binf)))
+
+        fig3_rnd.savefig(s.figures_folder + 'FIGURE7/' + 'F73_rnd.pdf')
 
         time4 = [53500 - 2 * 7 * 24, 53500 + 2 * 7 * 24]
 
@@ -762,10 +921,10 @@ def Figure8():
 # F81
 
 
-    def F81(load=True):
+    def F81(load=False):
         # Which alphas and gammas we want to look at.
         alpha = 0.80
-        gamma_list = np.linspace(0, 2, 51)
+        gamma_list = np.linspace(0, 2, 11)
         beta_b_list = np.linspace(0.25, 1, 4)
 
         if load:
@@ -825,7 +984,7 @@ def Figure8():
         # fig1.show()
 
         fig1.savefig(s.figures_folder + 'FIGURE8/' + 'F81.pdf')
-    F81(load=False)
+    F81(load=True)
 
 def Figure9():
 # 2 figures:
@@ -945,4 +1104,5 @@ def Figure10():
     plt.close()
 
 
-# Figure10()
+# Figure6()
+Figure7()
