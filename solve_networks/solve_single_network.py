@@ -1,7 +1,7 @@
  # -*- coding: utf8 -*-
 from __future__ import division
 import numpy as np
-import settings as s
+import settings.settings as s
 import regions.classes as cl
 import aurespf.solvers as au
 import aurespf.DCsolvers as dc

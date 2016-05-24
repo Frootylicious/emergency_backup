@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import settings as s
-import tools as t
+import settings.settings as s
+import settings.tools as t
 from tqdm import tqdm
 
 from matplotlib import rcParams
@@ -1010,6 +1010,3 @@ class FigurePlot():
         fig3.savefig(s.figures_folder + 'FIGURE10/' + 'F103.pdf')
 #     plt.show()
         plt.close('all')
-
-f = FigurePlot()
-f.Figure10()

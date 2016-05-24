@@ -1,5 +1,5 @@
 import os
-import settings as s
+import settings.settings as s
 import numpy as np
 import matplotlib.pyplot as plt
 

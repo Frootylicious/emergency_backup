@@ -10,9 +10,9 @@ import numpy as np
 import colormaps as cmaps
 import matplotlib.pyplot as plt
 import regions.classes as cl
-import tools as to
+import settings.tools as to
 from itertools import product
-from data_solving import Data
+from solve_single_network import Data
 
 
 '''
