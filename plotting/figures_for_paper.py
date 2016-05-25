@@ -963,13 +963,14 @@ class FigurePlot():
 
         alpha = 0.80
         gamma = 1.00
-        beta_T_list = np.linspace(0, 1.5, 61)
+        beta_T_list = np.linspace(0, 1.5, 16)
 
         data1 = np.empty_like(beta_T_list)
         data2 = np.empty((len(beta_T_list), len(beta_T_list)))
         data3 = np.empty_like(beta_T_list)
 
         for i, beta_T in tqdm(enumerate(beta_T_list)):
+#             N = t.load_remote_network('c_s_a0.80_g1.00_b{:.2f}'.format(beta_T), N_or_F='N')
             N = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=beta_T, g=gamma))
 
             # Extracting the backup generation of DE.

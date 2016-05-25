@@ -1,4 +1,5 @@
 import os
+import subprocess
 import settings.settings as s
 import numpy as np
 import matplotlib.pyplot as plt
@@ -140,9 +141,9 @@ def storage_size(backup_timeseries, q=0.99):
 
     return (max(storage), storage[:-1], offset_backup)
 
-def storage_size_relative(backup_generation_timeseries, beta_kapacity):
+def storage_size_relative(backup_generation_timeseries, beta_capacity):
     G = np.array(backup_generation_timeseries)
-    K = beta_kapacity
+    K = beta_capacity
 
     K_minus_G = K - G
 
@@ -158,9 +159,54 @@ def storage_size_relative(backup_generation_timeseries, beta_kapacity):
 
     return(S_n_max - np.min(S_n), S_n)
 
+def storage_size_relative_loss(backup_generation_timeseries, beta_capacity):
+    G = np.array(backup_generation_timeseries)
+    K = beta_capacity
+
+
 def get_remote_figures():
     if not os.path.exists(s.remote_figures):
         os.mkdir(s.remote_figures)
     """Copy figures from the result-folder on a remote server"""
     os.system('scp -r {0}. {1}'.format(s.remote_figures_folder, s.remote_figures))
     return
+
+
+def load_remote_network(filename, N_or_F='N'):
+    '''
+    Function that copies a given solved network- or flow-object from the remote server
+    to a local temp-folder and returns the loaded object.
+    
+    parameters:
+        filename: string | the name of the object without the suffix and extension:
+        'c_s_a0.80_g1.00_b1.00'
+        N_or_F:   string | whether you want the network- or flow-object returned.
+
+    returns:
+        temp_load: numpy_object | the contents of the chosen file.
+
+    '''
+
+    file_to_check = filename + '_{}.npz'.format(N_or_F)
+
+    print('\nChecking for file {} on server...'.format(file_to_check))
+    remote_path = '/home/kofoed/emergency_backup/results/{}/'.format(N_or_F)
+    command = 'ssh {0} ls {1}'.format(s.remote_ip, remote_path)
+    p = subprocess.Popen(command,
+                         universal_newlines=True,
+                         shell=True, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    files_list = out.split()
+
+    if file_to_check in files_list:
+        print('\nFound file on server - copying to temp-directory...')
+        filename_total = '{0}:{1}{2}'.format(s.remote_ip, remote_path, file_to_check)
+        p2 = subprocess.Popen(['scp', filename_total, 'temp/temp.npz'])
+        sts = os.waitpid(p2.pid, 0)
+
+        temp_load = np.load('temp/temp.npz')
+        return(temp_load)
+    else:
+#         print('Did NOT find file')
+        raise IOError('No file named {0} on server {1}.'.format(filename, s.remote_ip))

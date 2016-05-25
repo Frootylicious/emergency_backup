@@ -4,6 +4,8 @@ iset_folder    = data_folder + 'ISET/'
 bialek_folder  = data_folder + 'Bialek/'
 results_folder = 'results/'
 figures_folder = results_folder + 'figures/'
+remote_ip      = '10.25.6.157'
+remote_folder  = '{0}:/home/kofoed/emergency_backup/'.format(remote_ip)
 remote_figures_folder = '10.25.6.157:/home/kofoed/emergency_backup/results/figures/'
 remote_figures = results_folder + 'remote_figures/'
 
