@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import settings.settings as s
 import settings.tools as t
 from tqdm import tqdm
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 plt.style.use('seaborn-whitegrid')
-
-load_iset = True
 
 
 class FigurePlot():
@@ -70,9 +70,69 @@ class FigurePlot():
         self.G_B_EU = G_B_EU
         return(Gw_EU, Gs_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU)
 
+    def Figure1(self, summer_week=30, winter_week=60):
+        '''
+        F41 consists of two backup timeseries of two weeks in the summer with zero and synchronized
+        transmission.
+        F41 is the same in the winter.
+        '''
 
-    # FIGURE 1 ---------------------------------------------------------------------------------------
-    def Figure1(self):
+        N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
+        N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+
+        G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
+        G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+
+        data_b0 = G_B_DE_b0 / self.avg_L_DE / 1000
+        data_binf = G_B_DE_binf / self.avg_L_DE / 1000
+
+        # Finding two weeks
+
+        summer_week *= 7 * 24
+        winter_week *= 7 * 24
+        two_weeks = 24 * 7 * 2
+        data_summer_b0 = data_b0[summer_week:summer_week + two_weeks]
+        data_winter_b0 = data_b0[winter_week:winter_week + two_weeks]
+        data_summer_binf = data_binf[summer_week:summer_week + two_weeks]
+        data_winter_binf = data_binf[winter_week:winter_week + two_weeks]
+
+        x = [0, len(data_summer_b0)]
+        x_ticks = ['$t$', '$t$ + 2 weeks']
+
+        fig1, (ax1) = plt.subplots(1, 1)
+        ax1.plot(data_summer_b0, 'r', label=r'Summer $\beta^T=0$')
+        ax1.plot(data_summer_binf, 'b', label=r'Summer $\beta^T=\infty$')
+
+        fig2, (ax2) = plt.subplots(1, 1)
+
+        ax2.plot(data_winter_b0, 'r', label=r'Winter $\beta^T=0$')
+        ax2.plot(data_winter_binf, 'b', label=r'Winter $\beta^T=\infty$')
+
+        ax1.axhline(0.7, color='grey', alpha=0.75, linestyle='--', label=r'$\approx 0.7$')
+        ax2.axhline(0.7, color='grey', alpha=0.75, linestyle='--', label=r'$\approx 0.7$')
+
+        ax1.set_xticks(x)
+        ax2.set_xticks(x)
+        ax1.set_xticklabels(x_ticks, ha="right", va="top", fontsize=20)
+        ax2.set_xticklabels(x_ticks, ha="right", va="top", fontsize=20)
+        ax1.set_xlim(x)
+        ax2.set_xlim(x)
+        ax1.set_ylim([0, 1.4])
+        ax2.set_ylim([0, 1.4])
+        ax1.set_ylabel(r'$\frac{G^B_n\left(t\right)}{\left<L_n\right>}$',
+                    rotation=0, fontsize=20, labelpad=20)
+        ax2.set_ylabel(r'$\frac{G^B_n\left(t\right)}{\left<L_n\right>}$',
+                    rotation=0, fontsize=20, labelpad=20)
+        ax1.legend(loc='upper right')
+        ax2.legend(loc='upper right')
+
+        fig1.savefig(s.figures_folder + 'FIGURE4/' + 'F41.pdf')
+        fig2.savefig(s.figures_folder + 'FIGURE4/' + 'F42.pdf')
+
+        # plt.show()
+        plt.close('all')
+
+    def Figure2(self):
         '''
         F1 consists of two histograms of the distribution of the backup generation for zero and
         synchronized transmission.
@@ -116,7 +176,7 @@ class FigurePlot():
         plt.savefig(s.figures_folder + 'FIGURE1/' + 'F1.pdf')
         plt.close('all')
 
-    def Figure2(self, resolution=100):
+    def Figure2_old(self, resolution=100):
         '''
         F21 is the backup generation as a function of alpha.
         F22 is the backup capacity with different quantiles as a function of alpha.
@@ -199,73 +259,7 @@ class FigurePlot():
         # plt.show()
         plt.close('all')
 
-
-# FIGURE 4 ----------------------------------------------------------------------------------------
-
-    def Figure4(self, summer_week=30, winter_week=60):
-        '''
-        F41 consists of two backup timeseries of two weeks in the summer with zero and synchronized
-        transmission.
-        F41 is the same in the winter.
-        '''
-
-        N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
-        N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
-
-        G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
-        G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
-
-        data_b0 = G_B_DE_b0 / self.avg_L_DE / 1000
-        data_binf = G_B_DE_binf / self.avg_L_DE / 1000
-
-        # Finding two weeks
-
-        summer_week *= 7 * 24
-        winter_week *= 7 * 24
-        two_weeks = 24 * 7 * 2
-        data_summer_b0 = data_b0[summer_week:summer_week + two_weeks]
-        data_winter_b0 = data_b0[winter_week:winter_week + two_weeks]
-        data_summer_binf = data_binf[summer_week:summer_week + two_weeks]
-        data_winter_binf = data_binf[winter_week:winter_week + two_weeks]
-
-        x = [0, len(data_summer_b0)]
-        x_ticks = ['$t$', '$t$ + 2 weeks']
-
-        fig1, (ax1) = plt.subplots(1, 1)
-        ax1.plot(data_summer_b0, 'r', label=r'Summer $\beta^T=0$')
-        ax1.plot(data_summer_binf, 'b', label=r'Summer $\beta^T=\infty$')
-
-        fig2, (ax2) = plt.subplots(1, 1)
-
-        ax2.plot(data_winter_b0, 'r', label=r'Winter $\beta^T=0$')
-        ax2.plot(data_winter_binf, 'b', label=r'Winter $\beta^T=\infty$')
-
-        ax1.axhline(0.7, color='grey', alpha=0.75, linestyle='--', label=r'$\approx 0.7$')
-        ax2.axhline(0.7, color='grey', alpha=0.75, linestyle='--', label=r'$\approx 0.7$')
-
-        ax1.set_xticks(x)
-        ax2.set_xticks(x)
-        ax1.set_xticklabels(x_ticks, ha="right", va="top", fontsize=20)
-        ax2.set_xticklabels(x_ticks, ha="right", va="top", fontsize=20)
-        ax1.set_xlim(x)
-        ax2.set_xlim(x)
-        ax1.set_ylim([0, 1.4])
-        ax2.set_ylim([0, 1.4])
-        ax1.set_ylabel(r'$\frac{G^B_n\left(t\right)}{\left<L_n\right>}$',
-                    rotation=0, fontsize=20, labelpad=20)
-        ax2.set_ylabel(r'$\frac{G^B_n\left(t\right)}{\left<L_n\right>}$',
-                    rotation=0, fontsize=20, labelpad=20)
-        ax1.legend(loc='upper right')
-        ax2.legend(loc='upper right')
-
-        fig1.savefig(s.figures_folder + 'FIGURE4/' + 'F41.pdf')
-        fig2.savefig(s.figures_folder + 'FIGURE4/' + 'F42.pdf')
-
-        # plt.show()
-        plt.close('all')
-
-
-    def Figure5(self):
+    def Figure3(self):
         '''
         F51 is the the average of the backup generation minus the backup capacity as a function of the
         backup capacity for both zero and synchronized transmission.
@@ -322,8 +316,7 @@ class FigurePlot():
 
         plt.close('all')
 
-
-    def Figure6(self):
+    def Figure4(self):
         '''
         F61 is the emergency backup energy as a function of the clustering time dt.
         F61_rnd is the same with randomized timeseries.
@@ -651,23 +644,23 @@ class FigurePlot():
 
         fig5.savefig(s.figures_folder + 'FIGURE6/' + 'F65_rnd.pdf')
 
-    def Figure7(self):
+    def Figure5(self):
         '''
-        F71 is the emergency backup capacity as a function of alpha
+        F51 is the emergency backup capacity as a function of alpha
         F72 is the emergency backup capacity as a function of the backup beta.
-        F73 is a timeseries of backup generation and the emergency storage filling level.
-        F73_rnd is the same as F73 but with randomized timeseries - the clustering is not present.
-        F74 and F75 are the same as F73 but with different zoom.
+        F53 is a timeseries of backup generation and the emergency storage filling level.
+        F53_rnd is the same as F53 but with randomized timeseries - the clustering is not present.
+        F54 and F55 are the same as F53 but with different zoom.
         '''
 
-        def F71(load=True):
+        def F51(load=True):
             # Which alphas and gammas we want to look at.
             alpha_list = np.linspace(0, 1, 41)
             beta_b_list = np.linspace(0.25, 1, 4)
 
             if load:
-                load_data_b0 = np.load(s.figures_folder + 'FIGURE7/' + 'data71_b0.npz')
-                load_data_binf = np.load(s.figures_folder + 'FIGURE7/' + 'data71_binf.npz')
+                load_data_b0 = np.load(s.figures_folder + 'FIGURE7/' + 'data51_b0.npz')
+                load_data_binf = np.load(s.figures_folder + 'FIGURE7/' + 'data51_binf.npz')
                 data_b0 = load_data_b0.f.arr_0
                 data_binf = load_data_binf.f.arr_0
             else:
@@ -693,8 +686,8 @@ class FigurePlot():
                         data_binf[j, i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
 
                 # Saving to files.
-                np.savez_compressed(s.figures_folder + 'FIGURE7/' + 'data71_b0.npz', data_b0)
-                np.savez_compressed(s.figures_folder + 'FIGURE7/' + 'data71_binf.npz', data_binf)
+                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data51_b0.npz', data_b0)
+                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data51_binf.npz', data_binf)
 
             # Plotting Figure7.1
             fig1, (ax1) = plt.subplots(1, 1)
@@ -714,15 +707,15 @@ class FigurePlot():
             ax1.set_ylabel(r'$\mathcal{K}^S_n$')
             # fig1.show()
 
-            fig1.savefig(s.figures_folder + 'FIGURE7/' + 'F71.pdf')
+            fig1.savefig(s.figures_folder + 'FIGURE7/' + 'F51.pdf')
 
-        def F72(load=True):
+        def F52(load=True):
             # Which alphas and gammas we want to look at.
             beta_b_list = np.linspace(0, 1, 11)
 
             if load:
-                load_data_b0 = np.load(s.figures_folder + 'FIGURE7/' + 'data72_b0.npz')
-                load_data_binf = np.load(s.figures_folder + 'FIGURE7/' + 'data72_binf.npz')
+                load_data_b0 = np.load(s.figures_folder + 'FIGURE5/' + 'data52_b0.npz')
+                load_data_binf = np.load(s.figures_folder + 'FIGURE5/' + 'data52_binf.npz')
                 data_b0 = load_data_b0.f.arr_0
                 data_binf = load_data_binf.f.arr_0
             else:
@@ -747,8 +740,8 @@ class FigurePlot():
                     data_binf[i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
 
                 # Saving to files.
-                np.savez_compressed(s.figures_folder + 'FIGURE7/' + 'data72_b0.npz', data_b0)
-                np.savez_compressed(s.figures_folder + 'FIGURE7/' + 'data72_binf.npz', data_binf)
+                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data52_b0.npz', data_b0)
+                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data52_binf.npz', data_binf)
 
             # Plotting Figure6.1
             fig1, (ax1) = plt.subplots(1, 1)
@@ -761,9 +754,9 @@ class FigurePlot():
             ax1.set_xlabel(r'$\beta^B$')
             ax1.set_ylabel(r'$\mathcal{K}^S_n$')
 
-            fig1.savefig(s.figures_folder + 'FIGURE7/' + 'F72.pdf')
+            fig1.savefig(s.figures_folder + 'FIGURE5/' + 'F52.pdf')
 
-        def F73_F74_F75(beta_b=0.75):
+        def F53_F54_F55(beta_b=0.55):
             K = beta_b
 
             N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
@@ -795,7 +788,7 @@ class FigurePlot():
             ax3.set_xlabel(r'$t$')
             ax3.set_ylabel(r'$E/\left<L_n\right>$')
             ax3.set_xlim((0, len(G_minus_K_binf)))
-            fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F73.pdf')
+            fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F53.pdf')
 
             fig3_rnd, (ax3_rnd) = plt.subplots(1, 1)
             ax3_rnd.plot(G_minus_K_binf_rnd, label=r'$G^B_n(t) - K^B_n$')
@@ -804,7 +797,7 @@ class FigurePlot():
             ax3_rnd.set_xlabel(r'$t$')
             ax3_rnd.set_ylabel(r'$E/\left<L_n\right>$')
             ax3_rnd.set_xlim((0, len(G_minus_K_binf)))
-            fig3_rnd.savefig(s.figures_folder + 'FIGURE7/' + 'F73_rnd.pdf')
+            fig3_rnd.savefig(s.figures_folder + 'FIGURE7/' + 'F53_rnd.pdf')
 
             time4 = [53500 - 2 * 7 * 24, 53500 + 2 * 7 * 24]
 
@@ -815,7 +808,7 @@ class FigurePlot():
             ax4.set_xlabel(r'$t$')
             ax4.set_ylabel(r'$E/\left<L_n\right>$')
             ax4.set_xlim((0, time4[1] - time4[0]))
-            fig4.savefig(s.figures_folder + 'FIGURE7/' + 'F74.pdf')
+            fig4.savefig(s.figures_folder + 'FIGURE7/' + 'F54.pdf')
 
             time5 = [53500 - 134, 53500 - 62]
 
@@ -826,12 +819,12 @@ class FigurePlot():
             ax5.set_xlabel(r'$t$')
             ax5.set_ylabel(r'$E/\left<L_n\right>$')
             ax5.set_xlim((0, time5[1] - time5[0]))
-            fig5.savefig(s.figures_folder + 'FIGURE7/' + 'F75.pdf')
+            fig5.savefig(s.figures_folder + 'FIGURE7/' + 'F55.pdf')
             plt.close('all')
 
-        F71()
-        F72()
-        F73_F74_F75(beta_b=0.75)
+        F51()
+        F52()
+        F53_F54_F55(beta_b=0.55)
 
     def Figure8(self):
         '''
@@ -1011,3 +1004,44 @@ class FigurePlot():
         fig3.savefig(s.figures_folder + 'FIGURE10/' + 'F103.pdf')
 #     plt.show()
         plt.close('all')
+
+    def F5_inset(self):
+
+        K = 0.75
+
+        N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+
+        # Extracting the backup generation of DE.
+        G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+
+        # Dividing by the average load to get relative units and converting to GW.
+        G_B_DE_binf /= (self.avg_L_DE * 1000)
+
+        G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
+
+        a_binf = t.storage_size_relative(G_B_DE_binf[:], K)
+
+        x_ticks = np.linspace(0, 8, self.nhours)
+
+        fig3, (ax3) = plt.subplots(1, 1)
+        ax3.plot(x_ticks, G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
+        ax3.plot(x_ticks, a_binf[1], label=r'$S_n(t)$')
+        ax3.legend(loc='lower left')
+        ax3.set_xlabel(r'$t$')
+        ax3.set_ylabel(r'$E/\left<L_n\right>$')
+        ax3.set_xlim((0, 8))
+#         fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F53.pdf')
+
+        time5 = [53500 - 134, 53500 - 62]
+
+#         axins = zoomed_inset_axes(ax3, 3, loc=3) # zoom-factor: 2.5, location: upper-left
+        axins = inset_axes(ax3, 3,2 , loc=3, bbox_to_anchor=(0.12, 0.30), bbox_transform=ax3.figure.transFigure) # no zoom
+        axins.set_xlim(x_ticks[time5[0]], x_ticks[time5[1]]) # apply the x-limits
+        axins.set_ylim(-3.5, 0.5) # apply the y-limits
+        plt.yticks(visible=False)
+        plt.xticks(visible=False)
+        mark_inset(ax3, axins, loc1=4, loc2=1, fc="none", ec="0.5")
+        axins.plot(x_ticks, G_minus_K_binf)
+        axins.plot(x_ticks, a_binf[1])
+        plt.show()
+
