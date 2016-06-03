@@ -2,7 +2,7 @@ from plotting.figures_for_paper import FigurePlot
 
 F = FigurePlot()
 
-# F.Figure1()
+F.Figure1()
 # F.Figure2()
 # F.Figure3()
 # F.Figure4()
@@ -12,4 +12,3 @@ F = FigurePlot()
 # F.Figure8()
 # F.Figure9()
 # F.Figure10()
-F.F5_inset()

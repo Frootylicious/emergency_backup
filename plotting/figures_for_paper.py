@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import settings.settings as s
 import settings.tools as t
 from tqdm import tqdm
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
-from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes, mark_inset
 
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
@@ -70,7 +69,7 @@ class FigurePlot():
         self.G_B_EU = G_B_EU
         return(Gw_EU, Gs_EU, D_n, C_n, G_B_n, D_EU, C_EU, G_B_EU)
 
-    def Figure1(self, summer_week=30, winter_week=60):
+    def Figure1(self, summer_week=30, winter_week=60, year=3):
         '''
         F41 consists of two backup timeseries of two weeks in the summer with zero and synchronized
         transmission.
@@ -87,47 +86,48 @@ class FigurePlot():
         data_binf = G_B_DE_binf / self.avg_L_DE / 1000
 
         # Finding two weeks
+        year_time = np.linspace(0, 9, self.nhours)
 
         summer_week *= 7 * 24
         winter_week *= 7 * 24
         two_weeks = 24 * 7 * 2
+        year_x = [year * 365 * 24, (year + 1) * 365 * 24]
         data_summer_b0 = data_b0[summer_week:summer_week + two_weeks]
         data_winter_b0 = data_b0[winter_week:winter_week + two_weeks]
         data_summer_binf = data_binf[summer_week:summer_week + two_weeks]
         data_winter_binf = data_binf[winter_week:winter_week + two_weeks]
+        data_summer_year_b0 = data_b0[year_x[0]:year_x[1]]
+        data_summer_year_binf = data_binf[year_x[0]:year_x[1]]
 
-        x = [0, len(data_summer_b0)]
         x_ticks = ['$t$', '$t$ + 2 weeks']
+        months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
+        # Figure 1a - 1 year.
         fig1, (ax1) = plt.subplots(1, 1)
-        ax1.plot(data_summer_b0, 'r', label=r'Summer $\beta^T=0$')
-        ax1.plot(data_summer_binf, 'b', label=r'Summer $\beta^T=\infty$')
+        ax1.plot(data_summer_year_b0, 'r', label=r'$\beta^T=0$')
+        ax1.plot(data_summer_year_binf, 'b', label=r'$\beta^T=\infty$')
+        ax1.set_xlim([0, 365*24])
+        ax1.set_xticks(np.linspace(0, 365*24, 13))
+        ax1.set_xticklabels(months)
 
         fig2, (ax2) = plt.subplots(1, 1)
-
         ax2.plot(data_winter_b0, 'r', label=r'Winter $\beta^T=0$')
         ax2.plot(data_winter_binf, 'b', label=r'Winter $\beta^T=\infty$')
 
         ax1.axhline(0.7, color='grey', alpha=0.75, linestyle='--', label=r'$\approx 0.7$')
         ax2.axhline(0.7, color='grey', alpha=0.75, linestyle='--', label=r'$\approx 0.7$')
 
-        ax1.set_xticks(x)
-        ax2.set_xticks(x)
-        ax1.set_xticklabels(x_ticks, ha="right", va="top", fontsize=20)
-        ax2.set_xticklabels(x_ticks, ha="right", va="top", fontsize=20)
-        ax1.set_xlim(x)
-        ax2.set_xlim(x)
         ax1.set_ylim([0, 1.4])
         ax2.set_ylim([0, 1.4])
         ax1.set_ylabel(r'$\frac{G^B_n\left(t\right)}{\left<L_n\right>}$',
                     rotation=0, fontsize=20, labelpad=20)
         ax2.set_ylabel(r'$\frac{G^B_n\left(t\right)}{\left<L_n\right>}$',
                     rotation=0, fontsize=20, labelpad=20)
-        ax1.legend(loc='upper right')
+        ax1.legend(loc='upper center')
         ax2.legend(loc='upper right')
 
-        fig1.savefig(s.figures_folder + 'FIGURE4/' + 'F41.pdf')
-        fig2.savefig(s.figures_folder + 'FIGURE4/' + 'F42.pdf')
+        fig1.savefig(s.figures_folder + 'FIGURE1/' + 'F11.pdf')
+        fig2.savefig(s.figures_folder + 'FIGURE1/' + 'F12.pdf')
 
         # plt.show()
         plt.close('all')
@@ -645,186 +645,247 @@ class FigurePlot():
         fig5.savefig(s.figures_folder + 'FIGURE6/' + 'F65_rnd.pdf')
 
     def Figure5(self):
-        '''
-        F51 is the emergency backup capacity as a function of alpha
-        F72 is the emergency backup capacity as a function of the backup beta.
-        F53 is a timeseries of backup generation and the emergency storage filling level.
-        F53_rnd is the same as F53 but with randomized timeseries - the clustering is not present.
-        F54 and F55 are the same as F53 but with different zoom.
-        '''
 
-        def F51(load=True):
-            # Which alphas and gammas we want to look at.
-            alpha_list = np.linspace(0, 1, 41)
-            beta_b_list = np.linspace(0.25, 1, 4)
+        def F5a_F5b(self, beta_b=0.75):
 
-            if load:
-                load_data_b0 = np.load(s.figures_folder + 'FIGURE7/' + 'data51_b0.npz')
-                load_data_binf = np.load(s.figures_folder + 'FIGURE7/' + 'data51_binf.npz')
-                data_b0 = load_data_b0.f.arr_0
-                data_binf = load_data_binf.f.arr_0
-            else:
-                data_b0 = np.empty((len(beta_b_list), len(alpha_list)))
-                data_binf = np.empty_like(data_b0)
-                for i, alpha in tqdm(enumerate(alpha_list)):
-
-                    # Loading the nodes-object.
-                    N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=0.00, g=1.00))
-                    N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
-
-                    # Extracting the backup generation of DE.
-                    G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
-                    G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
-
-                    # Dividing by the average load to get relative units and converting to GW.
-                    G_B_DE_b0 /= (self.avg_L_DE * 1000)
-                    G_B_DE_binf /= (self.avg_L_DE * 1000)
-
-                    for j, beta_b in tqdm(enumerate(beta_b_list)):
-
-                        data_b0[j, i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
-                        data_binf[j, i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
-
-                # Saving to files.
-                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data51_b0.npz', data_b0)
-                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data51_binf.npz', data_binf)
-
-            # Plotting Figure7.1
-            fig1, (ax1) = plt.subplots(1, 1)
-            ax1.plot(alpha_list, data_b0[0], '--r', label=r'$\beta^B = 0.25, \beta^T=0$')
-            ax1.plot(alpha_list, data_b0[1], '--b', label=r'$\beta^B  = 0.50, \beta^T=0$')
-            ax1.plot(alpha_list, data_b0[2], '--g', label=r'$\beta^B  = 0.75, \beta^T=0$')
-            ax1.plot(alpha_list, data_b0[3], '--c', label=r'$\beta^B  = 1.00, \beta^T=0$')
-
-            ax1.plot(alpha_list, data_binf[0], 'r', label=r'$\beta^B  = 0.25, \beta^T=\infty$')
-            ax1.plot(alpha_list, data_binf[1], 'b', label=r'$\beta^B  = 0.50, \beta^T=\infty$')
-            ax1.plot(alpha_list, data_binf[2], 'g', label=r'$\beta^B  = 0.75, \beta^T=\infty$')
-            ax1.plot(alpha_list, data_binf[3], 'c', label=r'$\beta^B  = 1.00, \beta^T=\infty$')
-
-            ax1.legend(loc='upper right', ncol=2)
-            ax1.set_yscale('log')
-            ax1.set_xlabel(r'$\alpha$')
-            ax1.set_ylabel(r'$\mathcal{K}^S_n$')
-            # fig1.show()
-
-            fig1.savefig(s.figures_folder + 'FIGURE7/' + 'F51.pdf')
-
-        def F52(load=True):
-            # Which alphas and gammas we want to look at.
-            beta_b_list = np.linspace(0, 1, 11)
-
-            if load:
-                load_data_b0 = np.load(s.figures_folder + 'FIGURE5/' + 'data52_b0.npz')
-                load_data_binf = np.load(s.figures_folder + 'FIGURE5/' + 'data52_binf.npz')
-                data_b0 = load_data_b0.f.arr_0
-                data_binf = load_data_binf.f.arr_0
-            else:
-                data_b0 = np.empty_like(beta_b_list)
-                data_binf = np.empty_like(data_b0)
-
-                # Loading the nodes-object.
-                N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
-                N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
-
-                # Extracting the backup generation of DE.
-                G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
-                G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
-
-                # Dividing by the average load to get relative units and converting to GW.
-                G_B_DE_b0 /= (self.avg_L_DE * 1000)
-                G_B_DE_binf /= (self.avg_L_DE * 1000)
-
-                for i, beta_b in tqdm(enumerate(beta_b_list)):
-
-                    data_b0[i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
-                    data_binf[i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
-
-                # Saving to files.
-                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data52_b0.npz', data_b0)
-                np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data52_binf.npz', data_binf)
-
-            # Plotting Figure6.1
-            fig1, (ax1) = plt.subplots(1, 1)
-            ax1.plot(beta_b_list, data_b0, 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-
-            ax1.plot(beta_b_list, data_binf, 'b', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-
-            ax1.legend(loc='upper right', ncol=2)
-            ax1.set_yscale('log')
-            ax1.set_xlabel(r'$\beta^B$')
-            ax1.set_ylabel(r'$\mathcal{K}^S_n$')
-
-            fig1.savefig(s.figures_folder + 'FIGURE5/' + 'F52.pdf')
-
-        def F53_F54_F55(beta_b=0.55):
             K = beta_b
 
-            N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
             N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
 
             # Extracting the backup generation of DE.
-            G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
             G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
 
             # Dividing by the average load to get relative units and converting to GW.
-            G_B_DE_b0 /= (self.avg_L_DE * 1000)
             G_B_DE_binf /= (self.avg_L_DE * 1000)
+
+            # Randomizing
             G_B_DE_binf_rnd = np.copy(G_B_DE_binf)
             np.random.shuffle(G_B_DE_binf_rnd)
 
-            G_minus_K_b0 = [G - K if G - K >= 0 else 0 for G in G_B_DE_b0]
             G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
             G_minus_K_binf_rnd = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf_rnd]
 
-
-            a_b0 = t.storage_size_relative(G_B_DE_b0[:], K)
             a_binf = t.storage_size_relative(G_B_DE_binf[:], K)
             a_binf_rnd = t.storage_size_relative(G_B_DE_binf_rnd[:], K)
 
-            fig3, (ax3) = plt.subplots(1, 1)
-            ax3.plot(G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
-            ax3.plot(a_binf[1], label=r'$S_n(t)$')
-            ax3.legend(loc='lower left')
-            ax3.set_xlabel(r'$t$')
-            ax3.set_ylabel(r'$E/\left<L_n\right>$')
-            ax3.set_xlim((0, len(G_minus_K_binf)))
-            fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F53.pdf')
+            x_ticks = np.linspace(0, 8, self.nhours)
 
-            fig3_rnd, (ax3_rnd) = plt.subplots(1, 1)
-            ax3_rnd.plot(G_minus_K_binf_rnd, label=r'$G^B_n(t) - K^B_n$')
-            ax3_rnd.plot(a_binf_rnd[1], label=r'$S_n(t)$')
-            ax3_rnd.legend(loc='lower left')
-            ax3_rnd.set_xlabel(r'$t$')
-            ax3_rnd.set_ylabel(r'$E/\left<L_n\right>$')
-            ax3_rnd.set_xlim((0, len(G_minus_K_binf)))
-            fig3_rnd.savefig(s.figures_folder + 'FIGURE7/' + 'F53_rnd.pdf')
+            fig1, (ax1) = plt.subplots(1, 1)
+            ax1.plot(x_ticks, G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
+            ax1.plot(x_ticks, a_binf[1], label=r'$S_n(t)$')
+            ax1.legend(loc='lower left')
+            ax1.set_xlabel(r'$t$')
+            ax1.set_ylabel(r'$E/\left<L_n\right>$')
+            ax1.set_xlim((0, 8))
 
-            time4 = [53500 - 2 * 7 * 24, 53500 + 2 * 7 * 24]
+            time_inset = [53500 - 134, 53500 - 62]
 
-            fig4, (ax4) = plt.subplots(1, 1)
-            ax4.plot(G_minus_K_binf[time4[0]:time4[1]], label=r'$G^B_n(t) - K^B_n$')
-            ax4.plot(a_binf[1][time4[0]:time4[1]], label=r'$S_n(t)$')
-            ax4.legend(loc='lower left')
-            ax4.set_xlabel(r'$t$')
-            ax4.set_ylabel(r'$E/\left<L_n\right>$')
-            ax4.set_xlim((0, time4[1] - time4[0]))
-            fig4.savefig(s.figures_folder + 'FIGURE7/' + 'F54.pdf')
+            axins = inset_axes(ax1, 3,2 , loc=3, bbox_to_anchor=(0.12, 0.30), bbox_transform=ax1.figure.transFigure) # no zoom
+            axins.set_xlim(x_ticks[time_inset[0]], x_ticks[time_inset[1]]) # apply the x-limits
+            axins.set_ylim(-3.5, 0.5) # apply the y-limits
+            plt.yticks(visible=False)
+            plt.xticks(visible=False)
+            mark_inset(ax1, axins, loc1=4, loc2=1, fc="none", ec="0.5")
+            axins.plot(x_ticks, G_minus_K_binf)
+            axins.plot(x_ticks, a_binf[1])
+            fig1.savefig(s.figures_folder + 'FIGURE5/' + 'F51.pdf')
 
-            time5 = [53500 - 134, 53500 - 62]
+            # randomized timeseries
+            fig1_rnd, (ax1_rnd) = plt.subplots(1, 1)
+            ax1_rnd.plot(x_ticks, G_minus_K_binf_rnd, label=r'$G^B_n(t) - K^B_n$')
+            ax1_rnd.plot(x_ticks, a_binf_rnd[1], label=r'$S_n(t)$')
+            ax1_rnd.legend(loc='lower left')
+            ax1_rnd.set_xlabel(r'$t$')
+            ax1_rnd.set_ylabel(r'$E/\left<L_n\right>$')
+            ax1_rnd.set_xlim(ax1.get_xlim())
+            ax1_rnd.set_ylim(ax1.get_ylim())
+            fig1_rnd.savefig(s.figures_folder + 'FIGURE5/' + 'F53_rnd.pdf')
 
-            fig5, (ax5) = plt.subplots(1, 1)
-            ax5.plot(G_minus_K_binf[time5[0]:time5[1]], label=r'$G^B_n(t) - K^B_n$')
-            ax5.plot(a_binf[1][time5[0]:time5[1]], label=r'$S_n(t)$')
-            ax5.legend(loc='lower left')
-            ax5.set_xlabel(r'$t$')
-            ax5.set_ylabel(r'$E/\left<L_n\right>$')
-            ax5.set_xlim((0, time5[1] - time5[0]))
-            fig5.savefig(s.figures_folder + 'FIGURE7/' + 'F55.pdf')
             plt.close('all')
 
-        F51()
-        F52()
-        F53_F54_F55(beta_b=0.55)
+        F5a_F5b(self)
+
+#     def Figure5_old(self):
+#         '''
+#         F51 is the emergency backup capacity as a function of alpha
+#         F72 is the emergency backup capacity as a function of the backup beta.
+#         F53 is a timeseries of backup generation and the emergency storage filling level.
+#         F53_rnd is the same as F53 but with randomized timeseries - the clustering is not present.
+#         F54 and F55 are the same as F53 but with different zoom.
+#         '''
+# 
+#         def F51(load=True):
+#             # Which alphas and gammas we want to look at.
+#             alpha_list = np.linspace(0, 1, 41)
+#             beta_b_list = np.linspace(0.25, 1, 4)
+# 
+#             if load:
+#                 load_data_b0 = np.load(s.figures_folder + 'FIGURE7/' + 'data51_b0.npz')
+#                 load_data_binf = np.load(s.figures_folder + 'FIGURE7/' + 'data51_binf.npz')
+#                 data_b0 = load_data_b0.f.arr_0
+#                 data_binf = load_data_binf.f.arr_0
+#             else:
+#                 data_b0 = np.empty((len(beta_b_list), len(alpha_list)))
+#                 data_binf = np.empty_like(data_b0)
+#                 for i, alpha in tqdm(enumerate(alpha_list)):
+# 
+#                     # Loading the nodes-object.
+#                     N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=alpha, b=0.00, g=1.00))
+#                     N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=alpha, b=np.inf, g=1.00))
+# 
+#                     # Extracting the backup generation of DE.
+#                     G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
+#                     G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+# 
+#                     # Dividing by the average load to get relative units and converting to GW.
+#                     G_B_DE_b0 /= (self.avg_L_DE * 1000)
+#                     G_B_DE_binf /= (self.avg_L_DE * 1000)
+# 
+#                     for j, beta_b in tqdm(enumerate(beta_b_list)):
+# 
+#                         data_b0[j, i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
+#                         data_binf[j, i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
+# 
+#                 # Saving to files.
+#                 np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data51_b0.npz', data_b0)
+#                 np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data51_binf.npz', data_binf)
+# 
+#             # Plotting Figure7.1
+#             fig1, (ax1) = plt.subplots(1, 1)
+#             ax1.plot(alpha_list, data_b0[0], '--r', label=r'$\beta^B = 0.25, \beta^T=0$')
+#             ax1.plot(alpha_list, data_b0[1], '--b', label=r'$\beta^B  = 0.50, \beta^T=0$')
+#             ax1.plot(alpha_list, data_b0[2], '--g', label=r'$\beta^B  = 0.75, \beta^T=0$')
+#             ax1.plot(alpha_list, data_b0[3], '--c', label=r'$\beta^B  = 1.00, \beta^T=0$')
+# 
+#             ax1.plot(alpha_list, data_binf[0], 'r', label=r'$\beta^B  = 0.25, \beta^T=\infty$')
+#             ax1.plot(alpha_list, data_binf[1], 'b', label=r'$\beta^B  = 0.50, \beta^T=\infty$')
+#             ax1.plot(alpha_list, data_binf[2], 'g', label=r'$\beta^B  = 0.75, \beta^T=\infty$')
+#             ax1.plot(alpha_list, data_binf[3], 'c', label=r'$\beta^B  = 1.00, \beta^T=\infty$')
+# 
+#             ax1.legend(loc='upper right', ncol=2)
+#             ax1.set_yscale('log')
+#             ax1.set_xlabel(r'$\alpha$')
+#             ax1.set_ylabel(r'$\mathcal{K}^S_n$')
+#             # fig1.show()
+# 
+#             fig1.savefig(s.figures_folder + 'FIGURE7/' + 'F51.pdf')
+
+#         def F52(load=True):
+#             # Which alphas and gammas we want to look at.
+#             beta_b_list = np.linspace(0, 1, 11)
+# 
+#             if load:
+#                 load_data_b0 = np.load(s.figures_folder + 'FIGURE5/' + 'data52_b0.npz')
+#                 load_data_binf = np.load(s.figures_folder + 'FIGURE5/' + 'data52_binf.npz')
+#                 data_b0 = load_data_b0.f.arr_0
+#                 data_binf = load_data_binf.f.arr_0
+#             else:
+#                 data_b0 = np.empty_like(beta_b_list)
+#                 data_binf = np.empty_like(data_b0)
+# 
+#                 # Loading the nodes-object.
+#                 N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
+#                 N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+# 
+#                 # Extracting the backup generation of DE.
+#                 G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
+#                 G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+# 
+#                 # Dividing by the average load to get relative units and converting to GW.
+#                 G_B_DE_b0 /= (self.avg_L_DE * 1000)
+#                 G_B_DE_binf /= (self.avg_L_DE * 1000)
+# 
+#                 for i, beta_b in tqdm(enumerate(beta_b_list)):
+# 
+#                     data_b0[i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
+#                     data_binf[i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
+# 
+#                 # Saving to files.
+#                 np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data52_b0.npz', data_b0)
+#                 np.savez_compressed(s.figures_folder + 'FIGURE5/' + 'data52_binf.npz', data_binf)
+# 
+#             # Plotting Figure6.1
+#             fig1, (ax1) = plt.subplots(1, 1)
+#             ax1.plot(beta_b_list, data_b0, 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+# 
+#             ax1.plot(beta_b_list, data_binf, 'b', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+# 
+#             ax1.legend(loc='upper right', ncol=2)
+#             ax1.set_yscale('log')
+#             ax1.set_xlabel(r'$\beta^B$')
+#             ax1.set_ylabel(r'$\mathcal{K}^S_n$')
+# 
+#             fig1.savefig(s.figures_folder + 'FIGURE5/' + 'F52.pdf')
+
+#         def F53_F54_F55(beta_b=0.55):
+#             K = beta_b
+# 
+#             N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
+#             N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+# 
+#             # Extracting the backup generation of DE.
+#             G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
+#             G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+# 
+#             # Dividing by the average load to get relative units and converting to GW.
+#             G_B_DE_b0 /= (self.avg_L_DE * 1000)
+#             G_B_DE_binf /= (self.avg_L_DE * 1000)
+#             G_B_DE_binf_rnd = np.copy(G_B_DE_binf)
+#             np.random.shuffle(G_B_DE_binf_rnd)
+# 
+#             G_minus_K_b0 = [G - K if G - K >= 0 else 0 for G in G_B_DE_b0]
+#             G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
+#             G_minus_K_binf_rnd = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf_rnd]
+# 
+# 
+#             a_b0 = t.storage_size_relative(G_B_DE_b0[:], K)
+#             a_binf = t.storage_size_relative(G_B_DE_binf[:], K)
+#             a_binf_rnd = t.storage_size_relative(G_B_DE_binf_rnd[:], K)
+# 
+#             fig3, (ax3) = plt.subplots(1, 1)
+#             ax3.plot(G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
+#             ax3.plot(a_binf[1], label=r'$S_n(t)$')
+#             ax3.legend(loc='lower left')
+#             ax3.set_xlabel(r'$t$')
+#             ax3.set_ylabel(r'$E/\left<L_n\right>$')
+#             ax3.set_xlim((0, len(G_minus_K_binf)))
+#             fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F53.pdf')
+# 
+#             fig3_rnd, (ax3_rnd) = plt.subplots(1, 1)
+#             ax3_rnd.plot(G_minus_K_binf_rnd, label=r'$G^B_n(t) - K^B_n$')
+#             ax3_rnd.plot(a_binf_rnd[1], label=r'$S_n(t)$')
+#             ax3_rnd.legend(loc='lower left')
+#             ax3_rnd.set_xlabel(r'$t$')
+#             ax3_rnd.set_ylabel(r'$E/\left<L_n\right>$')
+#             ax3_rnd.set_xlim((0, len(G_minus_K_binf)))
+#             fig3_rnd.savefig(s.figures_folder + 'FIGURE7/' + 'F53_rnd.pdf')
+# 
+#             time4 = [53500 - 2 * 7 * 24, 53500 + 2 * 7 * 24]
+# 
+#             fig4, (ax4) = plt.subplots(1, 1)
+#             ax4.plot(G_minus_K_binf[time4[0]:time4[1]], label=r'$G^B_n(t) - K^B_n$')
+#             ax4.plot(a_binf[1][time4[0]:time4[1]], label=r'$S_n(t)$')
+#             ax4.legend(loc='lower left')
+#             ax4.set_xlabel(r'$t$')
+#             ax4.set_ylabel(r'$E/\left<L_n\right>$')
+#             ax4.set_xlim((0, time4[1] - time4[0]))
+#             fig4.savefig(s.figures_folder + 'FIGURE7/' + 'F54.pdf')
+# 
+#             time5 = [53500 - 134, 53500 - 62]
+# 
+#             fig5, (ax5) = plt.subplots(1, 1)
+#             ax5.plot(G_minus_K_binf[time5[0]:time5[1]], label=r'$G^B_n(t) - K^B_n$')
+#             ax5.plot(a_binf[1][time5[0]:time5[1]], label=r'$S_n(t)$')
+#             ax5.legend(loc='lower left')
+#             ax5.set_xlabel(r'$t$')
+#             ax5.set_ylabel(r'$E/\left<L_n\right>$')
+#             ax5.set_xlim((0, time5[1] - time5[0]))
+#             fig5.savefig(s.figures_folder + 'FIGURE7/' + 'F55.pdf')
+#             plt.close('all')
+# 
+#         F51()
+#         F52()
+#         F53_F54_F55(beta_b=0.55)
 
     def Figure8(self):
         '''
@@ -1004,44 +1065,4 @@ class FigurePlot():
         fig3.savefig(s.figures_folder + 'FIGURE10/' + 'F103.pdf')
 #     plt.show()
         plt.close('all')
-
-    def F5_inset(self):
-
-        K = 0.75
-
-        N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
-
-        # Extracting the backup generation of DE.
-        G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
-
-        # Dividing by the average load to get relative units and converting to GW.
-        G_B_DE_binf /= (self.avg_L_DE * 1000)
-
-        G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
-
-        a_binf = t.storage_size_relative(G_B_DE_binf[:], K)
-
-        x_ticks = np.linspace(0, 8, self.nhours)
-
-        fig3, (ax3) = plt.subplots(1, 1)
-        ax3.plot(x_ticks, G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
-        ax3.plot(x_ticks, a_binf[1], label=r'$S_n(t)$')
-        ax3.legend(loc='lower left')
-        ax3.set_xlabel(r'$t$')
-        ax3.set_ylabel(r'$E/\left<L_n\right>$')
-        ax3.set_xlim((0, 8))
-#         fig3.savefig(s.figures_folder + 'FIGURE7/' + 'F53.pdf')
-
-        time5 = [53500 - 134, 53500 - 62]
-
-#         axins = zoomed_inset_axes(ax3, 3, loc=3) # zoom-factor: 2.5, location: upper-left
-        axins = inset_axes(ax3, 3,2 , loc=3, bbox_to_anchor=(0.12, 0.30), bbox_transform=ax3.figure.transFigure) # no zoom
-        axins.set_xlim(x_ticks[time5[0]], x_ticks[time5[1]]) # apply the x-limits
-        axins.set_ylim(-3.5, 0.5) # apply the y-limits
-        plt.yticks(visible=False)
-        plt.xticks(visible=False)
-        mark_inset(ax3, axins, loc1=4, loc2=1, fc="none", ec="0.5")
-        axins.plot(x_ticks, G_minus_K_binf)
-        axins.plot(x_ticks, a_binf[1])
-        plt.show()
 
