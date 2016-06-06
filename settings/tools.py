@@ -141,7 +141,22 @@ def storage_size(backup_timeseries, q=0.99):
 
     return (max(storage), storage[:-1], offset_backup)
 
-def storage_size_relative(backup_generation_timeseries, beta_capacity):
+def storage_size_relative(backup_generation_timeseries, beta_capacity, eta=1):
+    '''
+    Function that calculates the extreme backup timeseries.
+
+    parameters:
+        backup_generation_timeseries: numpy array | a timeseries for the backup generation divided
+        by the mean load in that node.
+
+        beta_capacity: number | how much of the backup generation divided by the mean load in that
+        node that is not served and thus need extreme backup.
+
+        eta: number | the efficiency of the storage charging and discharging. For instance, eta=0.6
+        is a charge efficiency of 0.6 and discharge efficiency of 1/0.6.
+
+    returns:
+    '''
     G = np.array(backup_generation_timeseries)
     K = beta_capacity
 
@@ -152,16 +167,14 @@ def storage_size_relative(backup_generation_timeseries, beta_capacity):
     S_n = np.empty_like(K_minus_G)
 
     for t, K_G in enumerate(K_minus_G):
+        if K_G < 0:
+            eta **= -1
         if t == 0:
-            S_n[t] = np.min((S_n_max, K_G))
+            S_n[t] = np.min((S_n_max, eta * K_G))
         else:
-            S_n[t] = np.min((S_n_max, S_n[t - 1] + K_G))
+            S_n[t] = np.min((S_n_max, S_n[t - 1] + eta * K_G))
 
     return(S_n_max - np.min(S_n), S_n)
-
-def storage_size_relative_loss(backup_generation_timeseries, beta_capacity):
-    G = np.array(backup_generation_timeseries)
-    K = beta_capacity
 
 
 def get_remote_figures():
@@ -176,7 +189,7 @@ def load_remote_network(filename, N_or_F='N'):
     '''
     Function that copies a given solved network- or flow-object from the remote server
     to a local temp-folder and returns the loaded object.
-    
+
     parameters:
         filename: string | the name of the object without the suffix and extension:
         'c_s_a0.80_g1.00_b1.00'

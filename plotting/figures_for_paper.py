@@ -665,8 +665,8 @@ class FigurePlot():
             G_minus_K_binf = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf]
             G_minus_K_binf_rnd = [G - K if G - K >= 0 else 0 for G in G_B_DE_binf_rnd]
 
-            a_binf = t.storage_size_relative(G_B_DE_binf[:], K)
-            a_binf_rnd = t.storage_size_relative(G_B_DE_binf_rnd[:], K)
+            a_binf = t.storage_size_relative(G_B_DE_binf[:], K, eta=1)
+            a_binf_rnd = t.storage_size_relative(G_B_DE_binf_rnd[:], K, eta=1)
 
             x_ticks = np.linspace(0, 8, self.nhours)
 
