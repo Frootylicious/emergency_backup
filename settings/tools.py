@@ -160,19 +160,24 @@ def storage_size_relative(backup_generation_timeseries, beta_capacity, eta=1):
     G = np.array(backup_generation_timeseries)
     K = beta_capacity
 
+    # Subtracting the backup generation from the backup capacity.
     K_minus_G = K - G
 
+    # The initial maximum level of the emergency storage.
     S_n_max = 0
 
     S_n = np.empty_like(K_minus_G)
 
     for t, K_G in enumerate(K_minus_G):
+        eta_loop = np.copy(eta)
+        # If we need extreme backup energy.
         if K_G < 0:
-            eta **= -1
+            eta_loop **= -1
+        # Take care of first timestep.
         if t == 0:
-            S_n[t] = np.min((S_n_max, eta * K_G))
+            S_n[t] = np.min((S_n_max, eta_loop * K_G))
         else:
-            S_n[t] = np.min((S_n_max, S_n[t - 1] + eta * K_G))
+            S_n[t] = np.min((S_n_max, S_n[t - 1] + eta_loop * K_G))
 
     return(S_n_max - np.min(S_n), S_n)
 
@@ -223,3 +228,38 @@ def load_remote_network(filename, N_or_F='N'):
     else:
 #         print('Did NOT find file')
         raise IOError('No file named {0} on server {1}.'.format(filename, s.remote_ip))
+
+
+def find_minima(timeseries):
+    '''
+    Function that takes a timeseries and find the minimum in each connected event (the bottom of the
+    dips).
+
+    parameters:
+        timeseries: list | a timeseries (here the non-served energy).
+    returns: 
+        minima: list | a list of the minima in the clustered events.
+    '''
+    intervals = []
+    interval = []
+    minima = []
+
+    nonzero = np.nonzero(timeseries)[0]
+    diff = np.diff(nonzero)
+
+    for i, d in enumerate(diff):
+        interval.append(nonzero[i])
+        if d != 1:
+            intervals.append(interval)
+            interval = []
+
+    if nonzero[-1] - nonzero[-2] == 1:
+        interval.append(nonzero[-1])
+        intervals.append(interval)
+    else:
+        intervals.append([nonzero[-1]])
+
+    for interval in intervals:
+        minima.append(np.min(timeseries[interval]))
+
+    return(np.array(minima))

@@ -646,7 +646,7 @@ class FigurePlot():
 
     def Figure5(self):
 
-        def F5a_F5b(self, beta_b=0.75):
+        def F5a_F5b_F5c(self, beta_b=0.75):
 
             K = beta_b
 
@@ -688,7 +688,7 @@ class FigurePlot():
             mark_inset(ax1, axins, loc1=4, loc2=1, fc="none", ec="0.5")
             axins.plot(x_ticks, G_minus_K_binf)
             axins.plot(x_ticks, a_binf[1])
-            fig1.savefig(s.figures_folder + 'FIGURE5/' + 'F51.pdf')
+            fig1.savefig(s.figures_folder + 'FIGURE5/' + 'F5a.pdf')
 
             # randomized timeseries
             fig1_rnd, (ax1_rnd) = plt.subplots(1, 1)
@@ -699,11 +699,108 @@ class FigurePlot():
             ax1_rnd.set_ylabel(r'$E/\left<L_n\right>$')
             ax1_rnd.set_xlim(ax1.get_xlim())
             ax1_rnd.set_ylim(ax1.get_ylim())
-            fig1_rnd.savefig(s.figures_folder + 'FIGURE5/' + 'F53_rnd.pdf')
+            fig1_rnd.savefig(s.figures_folder + 'FIGURE5/' + 'F5b.pdf')
 
             plt.close('all')
+            
 
-        F5a_F5b(self)
+            # Figure 5c here
+            data_S = np.sort(t.find_minima(a_binf[1])* - 1)[:112]
+            data_S_rnd = np.sort(t.find_minima(a_binf_rnd[1]) * - 1)[:112]
+
+            fig, (ax) = plt.subplots(1, 1, sharex=True)
+
+            # Making histograms
+            hist_S, bins_S= np.histogram(data_S, density=True, bins=100, range=(0, 0.8))
+            left_S, right_S = bins_S[:-1], bins_S[1:]
+            X_S = np.array([left_S, right_S]).T.flatten()
+            Y_S = np.array([hist_S, hist_S]).T.flatten()
+
+            hist_S_rnd, bins_S_rnd = np.histogram(data_S_rnd, density=True, bins=100, range=(0, 0.8))
+            left_S_rnd, right_S_rnd = bins_S_rnd[:-1], bins_S_rnd[1:]
+            X_S_rnd = np.array([left_S_rnd, right_S_rnd]).T.flatten()
+            Y_S_rnd = np.array([hist_S_rnd, hist_S_rnd]).T.flatten()
+
+            # Histogram plot
+            ax.plot(X_S, Y_S, 'b', label=r'Actual sequence')
+            ax.plot(X_S_rnd, Y_S_rnd, 'r', label=r'Randomized sequence')
+            ax.legend(fontsize=20)
+            ax.set_xlabel('$\kappa^S_n$')
+            plt.savefig(s.figures_folder + 'FIGURE5/' + 'F5c.pdf')
+            plt.close('all')
+
+        F5a_F5b_F5c(self)
+
+    def Figure6(self):
+
+        def F61(load=True):
+            # Which alphas and gammas we want to look at.
+            beta_b_list = np.linspace(0, 1, 201)
+
+            eta = 0.6
+
+            if load:
+                load_data_b0 = np.load(s.figures_folder + 'FIGURE6/' + 'data61_b0.npz')
+                load_data_binf = np.load(s.figures_folder + 'FIGURE6/' + 'data61_binf.npz')
+                data_b0 = load_data_b0.f.arr_0
+                data_binf = load_data_binf.f.arr_0
+                load_data_b0_loss = np.load(s.figures_folder + 'FIGURE6/' + 'data61_b0_loss.npz')
+                load_data_binf_loss = np.load(s.figures_folder + 'FIGURE6/' + 'data61_binf_loss.npz')
+                data_b0_loss = load_data_b0.f.arr_0
+                data_binf_loss = load_data_binf.f.arr_0
+            else:
+                data_b0 = np.empty_like(beta_b_list)
+                data_binf = np.empty_like(data_b0)
+                data_b0_loss = np.empty_like(beta_b_list)
+                data_binf_loss= np.empty_like(data_b0)
+
+                # Loading the nodes-object.
+                N_b0 = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=0.00, g=1.00))
+                N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+
+                # Extracting the backup generation of DE.
+                G_B_DE_b0 = N_b0.f.balancing[s.country_dict['DE']]
+                G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
+
+                # Dividing by the average load to get relative units and converting to GW.
+                G_B_DE_b0 /= (self.avg_L_DE * 1000)
+                G_B_DE_binf /= (self.avg_L_DE * 1000)
+
+                for i, beta_b in tqdm(enumerate(beta_b_list)):
+
+                    data_b0[i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
+                    data_binf[i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
+                    data_b0_loss[i] = t.storage_size_relative(G_B_DE_b0, beta_b, eta=eta)[0]
+                    data_binf_loss[i] = t.storage_size_relative(G_B_DE_binf, beta_b, eta=eta)[0]
+
+                # Saving to files.
+                np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data61_b0.npz', data_b0)
+                np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data61_binf.npz', data_binf)
+                np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data61_b0_loss.npz', data_b0_loss)
+                np.savez_compressed(s.figures_folder + 'FIGURE6/' + 'data61_binf_loss.npz',
+                        data_binf_loss)
+
+            # Plotting Figure6.1
+            fig1, (ax1) = plt.subplots(1, 1)
+            ax1.plot(beta_b_list, data_b0, label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+            ax1.plot(beta_b_list, data_binf, label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+            ax1.plot(beta_b_list, data_b0_loss, 
+                     label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$ (lossy)')
+            ax1.plot(beta_b_list, data_binf_loss, 
+                     label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$ (lossy)')
+
+            ax1.legend(loc='upper right', ncol=1)
+            ax1.set_yscale('log')
+            ax1.set_xlabel(r'$\beta^B$')
+            ax1.set_ylabel(r'$\mathcal{K}^S_n$')
+
+            fig1.savefig(s.figures_folder + 'FIGURE6/' + 'F62.pdf')
+
+        F61(load=False)
+
+
+
+
 
 #     def Figure5_old(self):
 #         '''
