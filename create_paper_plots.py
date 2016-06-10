@@ -1,3 +1,4 @@
+import os
 from plotting.figures_for_paper import FigurePlot
 
 F = FigurePlot()
@@ -6,10 +7,8 @@ F = FigurePlot()
 # F.Figure2()
 # F.Figure3()
 # F.Figure4()
-# F.Figure5()
-# F.Figure6()
-# F.Figure7()
-# F.Figure8()
-# F.Figure9()
-# F.Figure10()
-F.NEW_FIGURES()
+F.Figure5()
+F.Figure6()
+# F.NEW_FIGURES()
+
+os.system('pdfunite results/figures/**/*.pdf results/figures/all_figures.pdf')

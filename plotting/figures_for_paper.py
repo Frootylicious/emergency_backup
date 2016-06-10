@@ -89,9 +89,9 @@ class FigurePlot():
         year = 3
         start_day = 13
 
-        start_day *= 24
         two_weeks = 24 * 7 * 2
         year_x = [(year - 1) * 365 * 24, (year) * 365 * 24]
+        two_weeks_x = [year_x[0] + (start_day - 1) * 24, year_x[0] + (start_day + 13) * 24]
 
         x_ticks_2w = ['13 Jan', '27 Jan']
         months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
@@ -108,7 +108,7 @@ class FigurePlot():
         fig2, (ax2) = plt.subplots(1, 1)
         ax2.plot(data_b0, 'r', label=r'$\beta^T=0$')
         ax2.plot(data_binf, 'b', label=r'$\beta^T=\infty$')
-        ax2.set_xlim([(start_day - 1), (start_day - 1 + two_weeks)])
+        ax2.set_xlim([two_weeks_x[0], two_weeks_x[1]])
         ax2.set_xticks(np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 2))
         ax2.set_xticklabels(x_ticks_2w)
 
@@ -243,7 +243,7 @@ class FigurePlot():
         ax2.plot(alphas, K_B_n_binf_q99, '-b', label=r'$\beta^T=\infty, q=0.99$', linewidth=2)
         ax2.plot(alphas, K_B_n_binf_q999, '--b', label=r'$\beta^T=\infty, q=0.999$', alpha=0.75)
         ax2.legend(loc='lower left', fontsize=13)
-        ax2.set_ylabel(r'$\frac{K_n^B \left(q\right)}{\left<L_n\right>}$',
+        ax2.set_ylabel(r'$\frac{\mathcal{K}_n^B \left(q\right)}{\left<L_n\right>}$',
                     rotation=0, fontsize=20, labelpad=20)
         ax2.set_xlabel(r'$\alpha$', fontsize=20)
         # ax2.set_ylim([0, ])
@@ -294,8 +294,8 @@ class FigurePlot():
         ax1.plot(x, avg_b0, 'r', label=r'$\beta^T=0$')
         ax1.plot(x, avg_binf, 'b', label=r'$\beta^T=\infty$')
         ax1.legend(loc='upper right')
-        ax1.set_xlabel(r'$K^B_n/\left<L_n\right>$')
-        ax1.set_ylabel(r'$\left< \max(G^B_n - K^B_n, 0) \right>$')
+        ax1.set_xlabel(r'$\mathcal{K}^B_n/\left<L_n\right>$')
+        ax1.set_ylabel(r'$\left< \max(G^B_n - \mathcal{K}^B_n, 0) \right>$')
         ax1.set_xlim([0, 1.3])
 
         fig2, (ax2) = plt.subplots(1, 1)
@@ -304,8 +304,8 @@ class FigurePlot():
         ax2.legend(loc='upper right')
         ax2.set_ylim([0, 5000])
         ax2.set_xlim([0, 1.3])
-        ax2.set_xlabel(r'$K^B_n/\left<L_n\right>$')
-        ax2.set_ylabel(r'$T(G^B_n > K^B_n)/yr$')
+        ax2.set_xlabel(r'$\mathcal{K}^B_n/\left<L_n\right>$')
+        ax2.set_ylabel(r'$T(G^B_n > \mathcal{K}^B_n)/yr$')
 
         fig1.savefig(s.figures_folder + 'FIGURE3/' + 'F3a.pdf')
         fig2.savefig(s.figures_folder + 'FIGURE3/' + 'F3b.pdf')
@@ -403,15 +403,15 @@ class FigurePlot():
 # PLOTTING NON-RANDOM ------------------------------------------------------------------------------
         # Plotting Figure6.1
         fig1, (ax1) = plt.subplots(1, 1)
-        ax1.plot(t_range, data_b0[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-        ax1.plot(t_range, data_b0[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
-        ax1.plot(t_range, data_b0[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
-        ax1.plot(t_range, data_b0[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+        ax1.plot(t_range, data_b0[0], '--r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+        ax1.plot(t_range, data_b0[1], '--b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+        ax1.plot(t_range, data_b0[2], '--g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+        ax1.plot(t_range, data_b0[3], '--c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
-        ax1.plot(t_range, data_binf[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-        ax1.plot(t_range, data_binf[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
-        ax1.plot(t_range, data_binf[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
-        ax1.plot(t_range, data_binf[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+        ax1.plot(t_range, data_binf[0], 'r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+        ax1.plot(t_range, data_binf[1], 'b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+        ax1.plot(t_range, data_binf[2], 'g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+        ax1.plot(t_range, data_binf[3], 'c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax1.legend(loc='upper left', ncol=2)
         ax1.set_xlim([1, 2 * 7 * 24])
@@ -422,15 +422,15 @@ class FigurePlot():
 
         # Plotting Figure6.2
         fig2, (ax2) = plt.subplots(1, 1)
-        ax2.plot(t_range, data_b0[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-        ax2.plot(t_range, data_b0[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
-        ax2.plot(t_range, data_b0[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
-        ax2.plot(t_range, data_b0[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+        ax2.plot(t_range, data_b0[0], '--r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+        ax2.plot(t_range, data_b0[1], '--b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+        ax2.plot(t_range, data_b0[2], '--g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+        ax2.plot(t_range, data_b0[3], '--c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
-        ax2.plot(t_range, data_binf[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-        ax2.plot(t_range, data_binf[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
-        ax2.plot(t_range, data_binf[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
-        ax2.plot(t_range, data_binf[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+        ax2.plot(t_range, data_binf[0], 'r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+        ax2.plot(t_range, data_binf[1], 'b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+        ax2.plot(t_range, data_binf[2], 'g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+        ax2.plot(t_range, data_binf[3], 'c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax2.set_yscale('log')
 
@@ -444,22 +444,22 @@ class FigurePlot():
         # Plotting Figure 4.3
         fig3, (ax3) = plt.subplots(1, 1)
         ax3.plot(t_range, data_b0[0] / t_range, '--r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
         ax3.plot(t_range, data_b0[1] / t_range, '--b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
         ax3.plot(t_range, data_b0[2] / t_range, '--g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
         ax3.plot(t_range, data_b0[3] / t_range, '--c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
         ax3.plot(t_range, data_binf[0] / t_range, 'r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
         ax3.plot(t_range, data_binf[1] / t_range, 'b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
         ax3.plot(t_range, data_binf[2] / t_range, 'g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
         ax3.plot(t_range, data_binf[3] / t_range, 'c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax3.legend(loc='upper center', ncol=2)
         ax3.set_xlim([1, 2 * 7 * 24])
@@ -471,22 +471,22 @@ class FigurePlot():
         # Plotting Figure 4.4 (loglog of 4.3)
         fig4, (ax4) = plt.subplots(1, 1)
         ax4.plot(t_range, data_b0[0] / t_range, '--r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
         ax4.plot(t_range, data_b0[1] / t_range, '--b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
         ax4.plot(t_range, data_b0[2] / t_range, '--g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
         ax4.plot(t_range, data_b0[3] / t_range, '--c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
         ax4.plot(t_range, data_binf[0] / t_range, 'r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
         ax4.plot(t_range, data_binf[1] / t_range, 'b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
         ax4.plot(t_range, data_binf[2] / t_range, 'g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
         ax4.plot(t_range, data_binf[3] / t_range, 'c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax4.set_yscale('log')
         ax4.set_xscale('log')
@@ -500,15 +500,15 @@ class FigurePlot():
 
         # Plotting Figure4.5 (loglog version of 4.2)
         fig5, (ax5) = plt.subplots(1, 1)
-        ax5.plot(t_range, data_b0[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-        ax5.plot(t_range, data_b0[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
-        ax5.plot(t_range, data_b0[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
-        ax5.plot(t_range, data_b0[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+        ax5.plot(t_range, data_b0[0], '--r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+        ax5.plot(t_range, data_b0[1], '--b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+        ax5.plot(t_range, data_b0[2], '--g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+        ax5.plot(t_range, data_b0[3], '--c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
-        ax5.plot(t_range, data_binf[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-        ax5.plot(t_range, data_binf[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
-        ax5.plot(t_range, data_binf[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
-        ax5.plot(t_range, data_binf[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf[0], 'r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf[1], 'b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf[2], 'g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf[3], 'c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax5.set_yscale('log')
         ax5.set_xscale('log')
@@ -523,15 +523,15 @@ class FigurePlot():
 # PLOTTING RANDOM ------------------------------------------------------------------------------
         # Plotting Figure4.1
         fig1_rnd, (ax1_rnd) = plt.subplots(1, 1)
-        ax1_rnd.plot(t_range, data_b0_rnd[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-        ax1_rnd.plot(t_range, data_b0_rnd[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
-        ax1_rnd.plot(t_range, data_b0_rnd[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
-        ax1_rnd.plot(t_range, data_b0_rnd[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+        ax1_rnd.plot(t_range, data_b0_rnd[0], '--r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+        ax1_rnd.plot(t_range, data_b0_rnd[1], '--b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+        ax1_rnd.plot(t_range, data_b0_rnd[2], '--g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+        ax1_rnd.plot(t_range, data_b0_rnd[3], '--c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
-        ax1_rnd.plot(t_range, data_binf_rnd[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-        ax1_rnd.plot(t_range, data_binf_rnd[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
-        ax1_rnd.plot(t_range, data_binf_rnd[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
-        ax1_rnd.plot(t_range, data_binf_rnd[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+        ax1_rnd.plot(t_range, data_binf_rnd[0], 'r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+        ax1_rnd.plot(t_range, data_binf_rnd[1], 'b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+        ax1_rnd.plot(t_range, data_binf_rnd[2], 'g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+        ax1_rnd.plot(t_range, data_binf_rnd[3], 'c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax1_rnd.legend(loc='upper left', ncol=2)
         ax1_rnd.set_xlim([1, 2 * 7 * 24])
@@ -542,15 +542,15 @@ class FigurePlot():
 
         # Plotting Figure6.2
         fig2_rnd, (ax2_rnd) = plt.subplots(1, 1)
-        ax2_rnd.plot(t_range, data_b0_rnd[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-        ax2_rnd.plot(t_range, data_b0_rnd[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
-        ax2_rnd.plot(t_range, data_b0_rnd[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
-        ax2_rnd.plot(t_range, data_b0_rnd[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+        ax2_rnd.plot(t_range, data_b0_rnd[0], '--r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+        ax2_rnd.plot(t_range, data_b0_rnd[1], '--b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+        ax2_rnd.plot(t_range, data_b0_rnd[2], '--g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+        ax2_rnd.plot(t_range, data_b0_rnd[3], '--c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
-        ax2_rnd.plot(t_range, data_binf_rnd[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-        ax2_rnd.plot(t_range, data_binf_rnd[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
-        ax2_rnd.plot(t_range, data_binf_rnd[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
-        ax2_rnd.plot(t_range, data_binf_rnd[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+        ax2_rnd.plot(t_range, data_binf_rnd[0], 'r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+        ax2_rnd.plot(t_range, data_binf_rnd[1], 'b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+        ax2_rnd.plot(t_range, data_binf_rnd[2], 'g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+        ax2_rnd.plot(t_range, data_binf_rnd[3], 'c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax2_rnd.set_yscale('log')
 
@@ -564,22 +564,22 @@ class FigurePlot():
         # Plotting Figure 6.3
         fig3_rnd, (ax3_rnd) = plt.subplots(1, 1)
         ax3_rnd.plot(t_range, data_b0_rnd[0] / t_range, '--r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
         ax3_rnd.plot(t_range, data_b0_rnd[1] / t_range, '--b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
         ax3_rnd.plot(t_range, data_b0_rnd[2] / t_range, '--g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
         ax3_rnd.plot(t_range, data_b0_rnd[3] / t_range, '--c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
         ax3_rnd.plot(t_range, data_binf_rnd[0] / t_range, 'r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
         ax3_rnd.plot(t_range, data_binf_rnd[1] / t_range, 'b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
         ax3_rnd.plot(t_range, data_binf_rnd[2] / t_range, 'g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
         ax3_rnd.plot(t_range, data_binf_rnd[3] / t_range, 'c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax3_rnd.legend(loc='upper center', ncol=2)
         ax3_rnd.set_xlim([1, 2 * 7 * 24])
@@ -591,22 +591,22 @@ class FigurePlot():
         # Plotting Figure 4.4 (loglog of 4.3)
         fig4_rnd, (ax4_rnd) = plt.subplots(1, 1)
         ax4_rnd.plot(t_range, data_b0_rnd[0] / t_range, '--r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
         ax4_rnd.plot(t_range, data_b0_rnd[1] / t_range, '--b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
         ax4_rnd.plot(t_range, data_b0_rnd[2] / t_range, '--g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
         ax4_rnd.plot(t_range, data_b0_rnd[3] / t_range, '--c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
         ax4_rnd.plot(t_range, data_binf_rnd[0] / t_range, 'r',
-                label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
         ax4_rnd.plot(t_range, data_binf_rnd[1] / t_range, 'b',
-                label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
         ax4_rnd.plot(t_range, data_binf_rnd[2] / t_range, 'g',
-                label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
         ax4_rnd.plot(t_range, data_binf_rnd[3] / t_range, 'c',
-                label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+                label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax4_rnd.set_yscale('log')
         ax4_rnd.set_xscale('log')
@@ -620,15 +620,15 @@ class FigurePlot():
 
         # Plotting Figure4.5 (loglog version of 4.2)
         fig5, (ax5) = plt.subplots(1, 1)
-        ax5.plot(t_range, data_b0_rnd[0], '--r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-        ax5.plot(t_range, data_b0_rnd[1], '--b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
-        ax5.plot(t_range, data_b0_rnd[2], '--g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
-        ax5.plot(t_range, data_b0_rnd[3], '--c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
+        ax5.plot(t_range, data_b0_rnd[0], '--r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
+        ax5.plot(t_range, data_b0_rnd[1], '--b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=0$')
+        ax5.plot(t_range, data_b0_rnd[2], '--g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=0$')
+        ax5.plot(t_range, data_b0_rnd[3], '--c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=0$')
 
-        ax5.plot(t_range, data_binf_rnd[0], 'r', label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-        ax5.plot(t_range, data_binf_rnd[1], 'b', label=r'$K^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
-        ax5.plot(t_range, data_binf_rnd[2], 'g', label=r'$K^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
-        ax5.plot(t_range, data_binf_rnd[3], 'c', label=r'$K^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf_rnd[0], 'r', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf_rnd[1], 'b', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.50, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf_rnd[2], 'g', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.75, \beta^T=\infty$')
+        ax5.plot(t_range, data_binf_rnd[3], 'c', label=r'$\mathcal{K}^B_n/\left<L_n\right> = 1.00, \beta^T=\infty$')
 
         ax5.set_yscale('log')
         ax5.set_xscale('log')
@@ -641,7 +641,6 @@ class FigurePlot():
         fig5.savefig(s.figures_folder + 'FIGURE4/' + 'F45_rnd.pdf')
 
     def Figure5(self):
-
         def F5a_F5b_F5c(self, beta_b=0.75):
 
             K = beta_b
@@ -667,12 +666,13 @@ class FigurePlot():
             x_ticks = np.linspace(0, 8, self.nhours)
 
             fig1, (ax1) = plt.subplots(1, 1)
-            ax1.plot(x_ticks, G_minus_K_binf, label=r'$G^B_n(t) - K^B_n$')
+            ax1.plot(x_ticks, G_minus_K_binf, label=r'$G^B_n(t) - \mathcal{K}^B_n$')
             ax1.plot(x_ticks, a_binf[1], label=r'$S_n(t)$')
             ax1.legend(loc='lower left')
             ax1.set_xlabel(r'$t$')
             ax1.set_ylabel(r'$E/\left<L_n\right>$')
             ax1.set_xlim((0, 8))
+            ax1.grid()
 
             time_inset = [53500 - 134, 53500 - 62]
 
@@ -689,7 +689,7 @@ class FigurePlot():
 
             # randomized timeseries
             fig1_rnd, (ax1_rnd) = plt.subplots(1, 1)
-            ax1_rnd.plot(x_ticks, G_minus_K_binf_rnd, label=r'$G^B_n(t) - K^B_n$')
+            ax1_rnd.plot(x_ticks, G_minus_K_binf_rnd, label=r'$G^B_n(t) - \mathcal{K}^B_n$')
             ax1_rnd.plot(x_ticks, a_binf_rnd[1], label=r'$S_n(t)$')
             ax1_rnd.legend(loc='lower left')
             ax1_rnd.set_xlabel(r'$t$')
@@ -723,13 +723,13 @@ class FigurePlot():
             ax.plot(X_S_rnd, Y_S_rnd, 'r', alpha=0.7, label=r'Randomized sequence')
             ax.legend(fontsize=20)
             ax.set_xlabel('$\mathcal{K}^S_n$')
+            ax.set_ylabel('$n$')
             plt.savefig(s.figures_folder + 'FIGURE5/' + 'F5c.pdf')
             plt.close('all')
 
         F5a_F5b_F5c(self)
 
     def Figure6(self):
-
         def F61(load=True):
             # Which alphas and gammas we want to look at.
             beta_b_list = np.linspace(0, 1, 201)
@@ -743,8 +743,8 @@ class FigurePlot():
                 load_data_binf_loss = np.load(s.figures_folder + 'FIGURE6/' + 'data61_binf_loss.npz')
                 data_b0 = load_data_b0.f.arr_0
                 data_binf = load_data_binf.f.arr_0
-                data_b0_loss = load_data_b0.f.arr_0
-                data_binf_loss = load_data_binf.f.arr_0
+                data_b0_loss = load_data_b0_loss.f.arr_0
+                data_binf_loss = load_data_binf_loss.f.arr_0
             else:
                 data_b0 = np.empty_like(beta_b_list)
                 data_binf = np.empty_like(data_b0)
@@ -765,8 +765,8 @@ class FigurePlot():
 
                 for i, beta_b in tqdm(enumerate(beta_b_list)):
 
-                    data_b0[i] = t.storage_size_relative(G_B_DE_b0, beta_b)[0]
-                    data_binf[i] = t.storage_size_relative(G_B_DE_binf, beta_b)[0]
+                    data_b0[i] = t.storage_size_relative(G_B_DE_b0, beta_b, eta=1)[0]
+                    data_binf[i] = t.storage_size_relative(G_B_DE_binf, beta_b, eta=1)[0]
                     data_b0_loss[i] = t.storage_size_relative(G_B_DE_b0, beta_b, eta=eta)[0]
                     data_binf_loss[i] = t.storage_size_relative(G_B_DE_binf, beta_b, eta=eta)[0]
 
@@ -778,14 +778,14 @@ class FigurePlot():
 
             # Plotting Figure6a
             fig1, (ax1) = plt.subplots(1, 1)
-            ax1.plot(beta_b_list, data_b0, 
-                     label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$')
-            ax1.plot(beta_b_list, data_binf, 
-                     label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$')
-            ax1.plot(beta_b_list, data_b0_loss, 
-                     label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=0$ (lossy)')
-            ax1.plot(beta_b_list, data_binf_loss, 
-                     label=r'$K^B_n/\left<L_n\right> = 0.25, \beta^T=\infty$ (lossy)')
+            ax1.plot(beta_b_list, data_b0, 'b',
+                     label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0,  \eta=1.0$')
+            ax1.plot(beta_b_list, data_binf, 'r',
+                     label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty, \eta=1.0$')
+            ax1.plot(beta_b_list, data_b0_loss, '--b',
+                     label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=0,  \eta=0.6$')
+            ax1.plot(beta_b_list, data_binf_loss, '--r',
+                     label=r'$\mathcal{K}^B_n/\left<L_n\right> = 0.25, \beta^T=\infty, \eta=0.6$')
 
             ax1.legend(loc='upper right', ncol=1)
             ax1.set_yscale('log')
@@ -795,7 +795,7 @@ class FigurePlot():
             fig1.savefig(s.figures_folder + 'FIGURE6/' + 'F6a.pdf')
 
 
-        F61(load=False)
+        F61(load=True)
 
     def Figure8(self):
         '''
@@ -995,12 +995,10 @@ class FigurePlot():
 
                 K_S_99[i] = t.storage_size_relative(G_B_DE_binf, K_B_99_binf[i])[0]
 
-            print(K_S_99)
-
             fig1, (ax1) = plt.subplots(1, 1)
 #         ax1.plot(gamma_list, data_b0)
             ax1.plot(gamma_list, K_B_99_binf, label=r'$\mathcal{K}^B_{n,q=0.99}$')
-            ax1.plot(gamma_list, K_S_99, label=r'$\mathcal{K}_s$')
+            ax1.plot(gamma_list, K_S_99, label=r'$\mathcal{K}^S_n$')
             ax1.set_xlabel('$\gamma$')
             ax1.set_ylabel(r'$E/\langle L_n \rangle$')
             ax1.legend(loc='upper left')
@@ -1045,7 +1043,6 @@ class FigurePlot():
                 G_B_DE_binf = N_binf.f.balancing[s.country_dict['DE']]
                 G_B_DE_binf /= (self.avg_L_DE * 1000)
                 K = t.quantile_old(0.99, G_B_DE_binf)
-                print(K)
                 G_K= [G_B_n - K if G_B_n - K >= 0 else 0 for G_B_n in G_B_DE_binf]
 
                 data[i] = np.mean(G_K)
@@ -1053,7 +1050,7 @@ class FigurePlot():
             fig1, (ax1) = plt.subplots(1, 1)
             ax1.plot(gamma_list, data)
             ax1.set_xlabel(r'$\gamma$')
-            ax1.set_ylabel(r'$\left< \max(G^B_n - K^B_n, 0) \right>$')
+            ax1.set_ylabel(r'$\left< \max(G^B_n - \mathcal{K}^B_n, 0) \right>$')
             fig1.savefig(s.figures_folder + 'FIGURENEW/' + 'FNEWc.pdf')
 
         def FNEWd(self):
@@ -1075,13 +1072,24 @@ class FigurePlot():
             ax1.set_ylabel(r'$\mathcal{K}^S / \langle L_n \rangle$')
             fig1.savefig(s.figures_folder + 'FIGURENEW/' + 'FNEWd.pdf')
 
+        def FNEWe(self):
+            gamma_list = np.linspace(0, 2, 11)
+            data = np.empty_like(gamma_list)
+            for i, g in enumerate(gamma_list):
+                N_binf = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=g))
+                C_DE_binf = N_binf.f.curtailment[s.country_dict['DE']]
+                C_DE_binf /= (self.avg_L_DE * 1000)
+                data[i] = np.mean(C_DE_binf)
 
-
-
-
-
+            fig1, (ax1) = plt.subplots(1, 1)
+            ax1.plot(gamma_list, data, label=r'$\beta^T=\infty$')
+            ax1.set_ylabel(r'$\langle C_n \rangle / \langle L_n \rangle$')
+            ax1.set_xlabel(r'$\gamma$')
+            ax1.legend(loc='upper left')
+            fig1.savefig(s.figures_folder + 'FIGURENEW/' + 'FNEWe.pdf')
 
         FNEWa(self)
-#         FNEWb(self)
-#         FNEWc(self)
-#         FNEWd(self)
+        FNEWb(self)
+        FNEWc(self)
+        FNEWd(self)
+        FNEWe(self)
