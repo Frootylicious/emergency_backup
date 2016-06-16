@@ -11,6 +11,7 @@
 import numpy as np
 import regions.tools as tools
 HOURS_PER_YEAR = 8760
+DOLLAR_TO_EURO = 0.89114646
 
 #####
 ## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis. 
@@ -18,9 +19,29 @@ asset_CCGT = {
     'Name': 'CCGT backup',
     'CapExFixed': 0.9, #Euros/W
     'OpExFixed': 4.5, #Euros/kW/year
-    'OpExVariable': 56.0, #Euros/MWh/year
+    'OpExVariable': 56.0, #Euros/MWh
     'Lifetime': 30 #years
     }
+
+H2 = {
+      'Capital cost per energy storage':     28.1,     #$/kWh
+      'Lifetime of energy equipment':        20,       #years 
+      'Capital power cost':                1683,       #$/kW capacity
+      'O&M cost per unit of power capacity': 27.5,     #$/kW/year
+      'O&M net present cost for 20 years':  206,       #$/kW
+      'Lifetime power equipment':            20,       #years
+      'Energy cost for 20 years':            28.1,     #$/kWh
+      'Power cost for 20 years':           1889,       #$/kW
+      'Round trip efficiency':                0.438,   #Fraction
+      'Storage loss over time':               1.50e-8, #Fraction lost per hour
+      }
+
+asset_H2 = {
+      'Name': 'H2 emergency backup',
+      'CapExFixed': H2['Capital power cost'] / 1000 * DOLLAR_TO_EURO, # €/W
+      'OpExFixed' : H2['O&M cost per unit of power capacity'] * DOLLAR_TO_EURO, # €/kW/year
+      'OpExVariable': H2['Capital cost per energy storage'] / 1000 * DOLLAR_TO_EURO
+      }
 
 #####
 ## Annualization factor:
@@ -51,6 +72,9 @@ def cost_BC(N):
     """Cost of BC is fixed part of CCGT."""
     BC = get_BC(N)
     return BC*(asset_CCGT['CapExFixed']*1e6 + asset_CCGT['OpExFixed']*1e3*annualizationFactor(asset_CCGT['Lifetime']))
+
+def cost_ES(N):
+    return
 
 #####    
 ## Total energy consumption: Used as scaling for the LCOE:
