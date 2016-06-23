@@ -1,20 +1,76 @@
-# -*- coding: utf-8 -*-
-
-#############################################################
-## Cost tools from Mads Raunbak and original tools.py file ##
-#############################################################
-
-################################################################################################
-## Corrected for Jonas' new regions implementation where fx mismatch has transposed dimension ##
-################################################################################################
-
+import settings.settings as s
+import settings.tools as t
 import numpy as np
-import regions.tools as tools
-HOURS_PER_YEAR = 8760
-DOLLAR_TO_EURO = 0.89114646
+import matplotlib.pyplot as plt
 
-#####
-## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis. 
+def get_energy_and_capacities(beta_capacity=1.00):
+    '''
+    Calculates the Backup Capacity, Backup Energy, Storage Capacity and Storage Energy for a
+    network. This is used to get a total cost of the network backup and storage.
+
+    Args:
+        beta_capacity: the backup capacity in terms of mean load
+    Returns:
+        BC: Backup Capacity in unit of MW
+        BE: Backup Energy in unit of MWh
+        SC: Storage Capacity in unit of MW
+        SE: Storage Energy in unit of MWh
+    '''
+
+    # Loading the node object
+    N = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+
+    # Extracting the load of all nodes.
+    L_EU = N.f.load
+    all_load = np.sum(N.f.load)
+
+    # Average load for whole EU per hour.
+    avg_L_EU = np.mean(np.sum(L_EU, axis=0))
+    balancing = N.f.balancing
+
+    # Dividing each node's balancing by its average load.
+    balancing_relative = np.array([b / np.mean(L) for b, L in zip(balancing, L_EU)])
+
+    # Backup Capacity (BC)  [MW] which is \beta * <L_n> which is summed for each country
+    BC = np.sum([beta_capacity * np.mean(L) for L in L_EU])
+
+    # Backup Energy (BE) [MWh]  which is the summed backup energy for all nodes, when B is smaller than the BC.
+    BE = np.sum([np.sum(b[b <= beta_capacity * np.mean(L)] for b, L in zip(balancing, L_EU))])
+
+    # Storage Capacity (SC) [MW] which is the size of the emergency storage summed for all nodes.
+    SC = np.sum([t.storage_size_relative(b, beta_capacity)[0] * np.mean(L) for b, L in zip(balancing_relative, L_EU)])
+
+    # Storage Energy (SE) [MWh] the summed storage for all nodes.
+    SE = np.sum([-np.sum(t.storage_size_relative(b, beta_capacity)[1] * np.mean(L)) for b, L in zip(balancing_relative, L_EU)])
+
+    return(BC, BE, SC, SE)
+
+def test():
+    beta = 1.00
+    (BC, BE, SC, SE) = get_energy_and_capacities(beta_capacity=beta)
+    print('------- Beta is: {:.2f} --------'.format(beta))
+    print('BACKUP CAPACITY (relative)')
+    print('{:E} MW'.format(BC))
+    print('BACKUP ENERGY')
+    print('{:E} MWh'.format(BE))
+    print('EMERGENCY BACKUP CAPACITY')
+    print('{:E} MW'.format(SC))
+    print('EMERGENCY BACKUP ENERGY')
+    print('{:E} MWh'.format(SE))
+    print('-------------------------------')
+    return
+
+## Annualization factor:
+def annualizationFactor(lifetime, r=4.0):
+    """Lifetime in years and r = rate in percent."""
+    if r==0:
+        return lifetime
+    r /= 100.0
+    return (1 - (1 + r)**-lifetime) / r
+
+
+
+## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis.
 asset_CCGT = {
     'Name': 'CCGT backup',
     'CapExFixed': 0.9, #Euros/W
@@ -23,46 +79,14 @@ asset_CCGT = {
     'Lifetime': 30 #years
     }
 
-H2 = {
-      'Capital cost per energy storage':     28.1,     #$/kWh
-      'Lifetime of energy equipment':        20,       #years 
-      'Capital power cost':                1683,       #$/kW capacity
-      'O&M cost per unit of power capacity': 27.5,     #$/kW/year
-      'O&M net present cost for 20 years':  206,       #$/kW
-      'Lifetime power equipment':            20,       #years
-      'Energy cost for 20 years':            28.1,     #$/kWh
-      'Power cost for 20 years':           1889,       #$/kW
-      'Round trip efficiency':                0.438,   #Fraction
-      'Storage loss over time':               1.50e-8, #Fraction lost per hour
-      }
-
 asset_H2 = {
-      'Name': 'H2 emergency backup',
-      'CapExFixed': H2['Capital power cost'] / 1000 * DOLLAR_TO_EURO, # €/W
-      'OpExFixed' : H2['O&M cost per unit of power capacity'] * DOLLAR_TO_EURO, # €/kW/year
-      'OpExVariable': H2['Capital cost per energy storage'] / 1000 * DOLLAR_TO_EURO
-      }
+        'CapExFixed': 737, # $/kW capacity
+        'OpExFixed': 12.2, # $/kW/year
+        'OpExVariable': 11.2, # $/kWh
+        }
 
 #####
-## Annualization factor:
-def annualizationFactor(lifetime, r=4.0): 
-    """Lifetime in years and r = rate in percent."""
-    if r==0: return lifetime
-    return (1-(1+(r/100.0))**-lifetime)/(r/100.0)
-    
-#####
-## Calculating BE, BC, TC, and wind and solar capacity.
-def get_BE(N):
-    """Total annual BE. In MWh per year."""
-    return sum([sum(n.balancing) for n in N]) / N.number_of_hours * HOURS_PER_YEAR
-    
-def get_BC(N):
-    """Total BC. In MW."""
-    return sum([tools.get_q(n.balancing, 0.99) for n in N])
- 
-    
-#####
-## The five essential cost terms from Emil's implementation:  
+## The five essential cost terms from Emil's implementation:
 def cost_BE(N):
     """Cost of BE is variable part of CCGT."""
     BE = get_BE(N)
@@ -76,21 +100,28 @@ def cost_BC(N):
 def cost_ES(N):
     return
 
-#####    
+#####
 ## Total energy consumption: Used as scaling for the LCOE:
 def total_annual_energy_consumption(N):
-    return np.sum([n.mean for n in N])*HOURS_PER_YEAR   
+    return np.sum([n.mean for n in N])*HOURS_PER_YEAR
 
 #####
 ## LCOE: With NEW definition: Scaling term depends on the lifetime of the investment:
 def get_LCOE(N):
-    scalingFactor_25 = sum([sum(n.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(25)
-    scalingFactor_30 = sum([sum(n.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(30)
-    scalingFactor_40 = sum([sum(n.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(40)
-    
+    scalingFactor_25 = np.sum(N.f.load) / N.f.nhours[0] * HOURS_PER_YEAR * annualizationFactor(25)
+    scalingFactor_30 = np.sum(N.f.load) / N.f.nhours[0] * HOURS_PER_YEAR * annualizationFactor(30)
+    scalingFactor_40 = np.sum(N.f.load) / N.f.nhours[0] * HOURS_PER_YEAR * annualizationFactor(40)
+#     scalingFactor_25 = sum([sum(n.f.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(25)
+#     scalingFactor_30 = sum([sum(n.f.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(30)
+#     scalingFactor_40 = sum([sum(n.f.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(40)
+
     LCOE_BE = cost_BE(N) / scalingFactor_30
     LCOE_BC = cost_BC(N) / scalingFactor_30
-    
+
     TOTAL_LCOE = LCOE_BE + LCOE_BC
 
     return TOTAL_LCOE,LCOE_BE,LCOE_BC
+
+
+# # N = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+N = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=1.00, g=1.00))
