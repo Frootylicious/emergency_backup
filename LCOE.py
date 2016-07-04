@@ -3,7 +3,7 @@ import settings.tools as t
 import numpy as np
 import matplotlib.pyplot as plt
 
-def get_energy_and_capacities(beta_capacity=1.00):
+class LCOE():
     '''
     Calculates the Backup Capacity, Backup Energy, Storage Capacity and Storage Energy for a
     network. This is used to get a total cost of the network backup and storage.
@@ -17,48 +17,93 @@ def get_energy_and_capacities(beta_capacity=1.00):
         SE: Storage Energy in unit of MWh
     '''
 
-    # Loading the node object
-    N = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
+    def __init__(self):
+        self.eta_store = 0.75
+        self.eta_dispatch = 0.58
 
-    # Extracting the load of all nodes.
-    L_EU = N.f.load
-    all_load = np.sum(N.f.load)
+        # Loading the node object
+        self.N = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
 
-    # Average load for whole EU per hour.
-    avg_L_EU = np.mean(np.sum(L_EU, axis=0))
-    balancing = N.f.balancing
+        # Extracting the load of all nodes.
+        self.L_EU = self.N.f.load
+        self.all_load = np.sum(self.N.f.load)
 
-    # Dividing each node's balancing by its average load.
-    balancing_relative = np.array([b / np.mean(L) for b, L in zip(balancing, L_EU)])
+        # Average load for whole EU per hour.
+        self.avg_L_EU = np.mean(np.sum(self.L_EU, axis=0))
+        self.balancing = self.N.f.balancing
 
-    # Backup Capacity (BC)  [MW] which is \beta * <L_n> which is summed for each country
-    BC = np.sum([beta_capacity * np.mean(L) for L in L_EU])
+        # Dividing each node's balancing by its average load.
+        self.balancing_relative = np.array([b / np.mean(L) for b, L in zip(self.balancing, self.L_EU)])
 
-    # Backup Energy (BE) [MWh]  which is the summed backup energy for all nodes, when B is smaller than the BC.
-    BE = np.sum([np.sum(b[b <= beta_capacity * np.mean(L)] for b, L in zip(balancing, L_EU))])
+    def calculate(self, beta_capacity=1.00):
+        self.get_BC()
+        self.get_BE()
+        self.get_SC()
+        self.get_SE()
 
-    # Storage Capacity (SC) [MW] which is the size of the emergency storage summed for all nodes.
-    SC = np.sum([t.storage_size_relative(b, beta_capacity)[0] * np.mean(L) for b, L in zip(balancing_relative, L_EU)])
+    def get_BC(self, beta_capacity=1.00):
+        '''
+        Backup Capacity (BC)  [MW] which is \beta * <L_n> which is summed for each country
+        '''
+        self.BC = np.sum([beta_capacity * np.mean(L) for L in self.L_EU])
 
-    # Storage Energy (SE) [MWh] the summed storage for all nodes.
-    SE = np.sum([-np.sum(t.storage_size_relative(b, beta_capacity)[1] * np.mean(L)) for b, L in zip(balancing_relative, L_EU)])
+    def get_BE(self, beta_capacity=1.00):
+        '''
+        PROBABLY WRONG
+        Backup Energy (BE) [MWh]  which is the summed backup energy for all nodes, when B is smaller than the BC.
+        '''
+        self.BE = np.sum([np.sum(b[b <= beta_capacity * np.mean(L)] for b, L in zip(self.balancing, self.L_EU))])
 
-    return(BC, BE, SC, SE)
+    def get_SC(self, beta_capacity=1.00):
+        '''
+        Storage Capacity (SC) [MWh] which is the size of the emergency storage summed for all nodes.
+        '''
+        self.SC = np.sum([t.storage_size_relative(b, beta_capacity)[0] * np.mean(L) for b, L in
+            zip(self.balancing_relative, self.L_EU)])
 
-def test():
-    beta = 1.00
-    (BC, BE, SC, SE) = get_energy_and_capacities(beta_capacity=beta)
-    print('------- Beta is: {:.2f} --------'.format(beta))
-    print('BACKUP CAPACITY (relative)')
-    print('{:E} MW'.format(BC))
-    print('BACKUP ENERGY')
-    print('{:E} MWh'.format(BE))
-    print('EMERGENCY BACKUP CAPACITY')
-    print('{:E} MW'.format(SC))
-    print('EMERGENCY BACKUP ENERGY')
-    print('{:E} MWh'.format(SE))
-    print('-------------------------------')
-    return
+    def get_SE(self, beta_capacity=1.00):
+        '''
+        Storage Energy (SE) [MWh] the summed storage for all nodes.
+        '''
+        self.SE = np.sum([-np.sum(t.storage_size_relative(b, beta_capacity)[1] * np.mean(L)) for b,
+            L in zip(self.balancing_relative, self.L_EU)])
+
+    def get_K_PS(self, beta_capacity=1.00):
+        self.K_PS = np.sum([t.storage_size_relative(b, beta_capacity)[1] * np.mean(L) for b,
+            L in zip(self.balancing_relative, self.L_EU)])
+
+
+        
+
+#     def calculate_sizes(self, beta_capacity=1.00):
+#         # Backup Capacity (BC)  [MW] which is \beta * <L_n> which is summed for each country
+#         self.BC = np.sum([beta_capacity * np.mean(L) for L in self.L_EU])
+# 
+#         # Backup Energy (BE) [MWh]  which is the summed backup energy for all nodes, when B is smaller than the BC.
+#         self.BE = np.sum([np.sum(b[b <= beta_capacity * np.mean(L)] for b, L in zip(self.balancing, self.L_EU))])
+# 
+#         # Storage Capacity (SC) [MW] which is the size of the emergency storage summed for all nodes.
+#         self.SC = np.sum([t.storage_size_relative(b, beta_capacity)[0] * np.mean(L) for b, L in
+#             zip(self.balancing_relative, self.L_EU)])
+# 
+#         # Storage Energy (SE) [MWh] the summed storage for all nodes.
+#         self.SE = np.sum([-np.sum(t.storage_size_relative(b, beta_capacity)[1] * np.mean(L)) for b,
+#             L in zip(self.balancing_relative, self.L_EU)])
+
+
+    def test(self, beta_capacity=1.00):
+        self.calculate(beta_capacity=beta_capacity)
+        print('------- Beta is: {:.2f} --------'.format(beta_capacity))
+        print('BACKUP CAPACITY (relative)')
+        print('{:.2E} MW'.format(self.BC))
+        print('BACKUP ENERGY')
+        print('{:.2E} MWh'.format(self.BE))
+        print('EMERGENCY BACKUP CAPACITY')
+        print('{:.2E} MWh'.format(self.SC))
+        print('EMERGENCY BACKUP ENERGY')
+        print('{:.2E} MWh'.format(self.SE))
+        print('-------------------------------')
+        return
 
 ## Annualization factor:
 def annualizationFactor(lifetime, r=4.0):
@@ -97,9 +142,6 @@ def cost_BC(N):
     BC = get_BC(N)
     return BC*(asset_CCGT['CapExFixed']*1e6 + asset_CCGT['OpExFixed']*1e3*annualizationFactor(asset_CCGT['Lifetime']))
 
-def cost_ES(N):
-    return
-
 #####
 ## Total energy consumption: Used as scaling for the LCOE:
 def total_annual_energy_consumption(N):
@@ -124,4 +166,5 @@ def get_LCOE(N):
 
 
 # # N = np.load(s.nodes_fullname_inf.format(c='c', f='s', a=0.80, b=np.inf, g=1.00))
-N = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=1.00, g=1.00))
+# N = np.load(s.nodes_fullname.format(c='c', f='s', a=0.80, b=1.00, g=1.00))
+L = LCOE()
