@@ -141,7 +141,7 @@ def storage_size(backup_timeseries, q=0.99):
 
     return (max(storage), storage[:-1], offset_backup)
 
-def storage_size_relative(backup_generation_timeseries, beta_capacity, eta=1):
+def storage_size_relative(backup_generation_timeseries, beta_capacity, eta_in=1.0, eta_out=1.0):
     '''
     Function that calculates the extreme backup timeseries.
 
@@ -169,10 +169,10 @@ def storage_size_relative(backup_generation_timeseries, beta_capacity, eta=1):
     S_n = np.empty_like(K_minus_G)
 
     for t, K_G in enumerate(K_minus_G):
-        eta_loop = np.copy(eta)
-        # If we need extreme backup energy.
-        if K_G < 0:
-            eta_loop **= -1
+        if K_G < 0: # Discharging the storage
+            eta_loop = np.copy(eta_out) ** -1
+        else:
+            eta_loop = np.copy(eta_in) # Charging the storage
         # Take care of first timestep.
         if t == 0:
             S_n[t] = np.min((S_n_max, eta_loop * K_G))
@@ -180,6 +180,12 @@ def storage_size_relative(backup_generation_timeseries, beta_capacity, eta=1):
             S_n[t] = np.min((S_n_max, S_n[t - 1] + eta_loop * K_G))
 
     return(S_n_max - np.min(S_n), S_n)
+
+def convert_to_exp_notation(number, print_it=False):
+    n = '{:.2E}'.format(number)
+    if print_it:
+        print(n)
+    return n
 
 
 def get_remote_figures():
@@ -263,3 +269,18 @@ def find_minima(timeseries):
         minima.append(np.min(timeseries[interval]))
 
     return(np.array(minima))
+
+def annuity(n, r):
+    '''
+    '''
+    return r/(1. -1./(1.+r)**n) 
+
+def diff_max_min(timeseries):
+    '''
+    Finding the biggest positive and negative gradients of a timeseries.
+    '''
+    timeseries_diff = np.diff(timeseries)
+    diff_max = np.max(timeseries_diff)
+    diff_min = -np.min(timeseries_diff)
+    return(diff_max, diff_min)
+
