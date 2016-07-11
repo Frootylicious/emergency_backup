@@ -5,16 +5,7 @@ import matplotlib.pyplot as plt
 
 class LCOE():
     '''
-    Calculates the Backup Capacity, Backup Energy, Storage Capacity and Storage Energy for a
-    network. This is used to get a total cost of the network backup and storage.
-
-    Args:
-        beta_capacity: the backup capacity in terms of mean load
-    Returns:
-        BC: Backup Capacity in unit of MW
-        BE: Backup Energy in unit of MWh
-        SC: Storage Capacity in unit of MW
-        SE: Storage Energy in unit of MWh
+    Class to calculate the different costs associated with a storage.
     '''
 
     def __init__(self):
@@ -38,6 +29,7 @@ class LCOE():
         # Dividing each node's balancing by its average load.
         self.balancing_relative = np.array([b / np.mean(L) for b, L in zip(self.balancing, self.L_EU)])
 
+
     def calculate(self):
         self.get_S_n()
         self.get_BC()
@@ -47,9 +39,15 @@ class LCOE():
 
 
     def get_S_n(self):
-        S_n = [t.storage_size_relative(b, 
-                                       self.beta_capacity, 
-                                       eta_in=self.eta_store, 
+        '''
+        Calculate the storage size for each country and save it to a matrix.
+
+        self.S_n : all countries' storage filling level timeseries.
+        self.S_all : a storage filling level timeseries for the combined Europe.
+        '''
+        S_n = [t.storage_size_relative(b,
+                                       self.beta_capacity,
+                                       eta_in=self.eta_store,
                                        eta_out=self.eta_dispatch)[1] * np.mean(L) for b, L in zip(self.balancing_relative, self.L_EU)]
         self.S_n = np.array(S_n)
         self.S_all = np.sum(self.S_n, axis=0)
@@ -62,10 +60,17 @@ class LCOE():
 
     def get_BE(self):
         '''
-        PROBABLY WRONG
-        Backup Energy (BE) [MWh]  which is the summed backup energy for all nodes, when B is smaller than the BC.
         '''
         self.BE = np.sum([np.sum(b[b <= self.beta_capacity * np.mean(L)] for b, L in zip(self.balancing, self.L_EU))])
+        self.balancing_with_storage = np.copy(self.balancing)
+        # Looping over each country
+        for i, (balancing, storage, l) in enumerate(zip(self.balancing_relative, self.S_n, self.avg_L_EU)):
+            # Looping over each timestep
+            for j, (b, s) in enumerate(zip(balancing, storage)):
+                if not s == 0:
+                    if np.abs(s / l) < (self.beta_capacity - b
+
+
 
     def get_K_ES(self):
         '''
@@ -79,7 +84,7 @@ class LCOE():
         Max and min of diff of the filling level of the storage.
         '''
 #         self.S_n = np.sum([t.storage_size_relative(b, self.beta_capacity, eta_in=self.eta_store,
-#             eta_out=self.eta_dispatch)[1] * np.mean(L) for b, L in 
+#             eta_out=self.eta_dispatch)[1] * np.mean(L) for b, L in
 #             zip(self.balancing_relative, self.L_EU)], axis=0)
 
         (self.K_PS_charge, self.K_PS_discharge) = t.diff_max_min(self.S_all)
@@ -102,10 +107,8 @@ class LCOE():
         print('---------------------------------------')
         return
 
-#     def costs(self):
-# 
-#         def get_cost_K_ES():
-
+# --------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 ## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis.
 asset_CCGT = {
