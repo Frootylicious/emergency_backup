@@ -21,13 +21,15 @@ class LCOE():
         # Extracting the load of all nodes.
         self.L_EU = self.N.f.load
         self.all_load = np.sum(self.N.f.load)
-
-        # Average load for whole EU per hour.
         self.avg_L_EU = np.mean(np.sum(self.L_EU, axis=0))
-        self.balancing = self.N.f.balancing
+        self.avg_L_n = np.mean(self.L_EU, axis=1)
+
+        self.curtailment = self.N.f.curtailment
+        self.curtailment_relative = np.array([c / L for c, L in zip(self.curtailment, self.avg_L_n)])
 
         # Dividing each node's balancing by its average load.
-        self.balancing_relative = np.array([b / np.mean(L) for b, L in zip(self.balancing, self.L_EU)])
+        self.balancing = self.N.f.balancing
+        self.balancing_relative = np.array([b / L for b, L in zip(self.balancing, self.avg_L_n)])
 
 
     def calculate(self):
@@ -48,27 +50,57 @@ class LCOE():
         S_n = [t.storage_size_relative(b,
                                        self.beta_capacity,
                                        eta_in=self.eta_store,
-                                       eta_out=self.eta_dispatch)[1] * np.mean(L) for b, L in zip(self.balancing_relative, self.L_EU)]
+                                       eta_out=self.eta_dispatch)[1] * L for b, L in zip(self.balancing_relative, self.avg_L_n)]
         self.S_n = np.array(S_n)
         self.S_all = np.sum(self.S_n, axis=0)
+        self.S_n_relative = np.array([s / l for s, l in zip(self.S_n, self.avg_L_n)])
 
     def get_BC(self):
         '''
         Backup Capacity (BC)  [MW] which is \beta * <L_n> which is summed for each country
         '''
-        self.BC = np.sum([self.beta_capacity * np.mean(L) for L in self.L_EU])
+        self.BC = np.sum([self.beta_capacity * L for L in self.avg_L_n])
 
     def get_BE(self):
         '''
+        Curtailment-delen er måske ikke helt rigtig.
         '''
-        self.BE = np.sum([np.sum(b[b <= self.beta_capacity * np.mean(L)] for b, L in zip(self.balancing, self.L_EU))])
-        self.balancing_with_storage = np.copy(self.balancing)
+        k = self.beta_capacity
+# WRONG?--------------------------------------------------------------------------------------------
+        self.balancing_with_storage = np.copy(self.balancing_relative)
+        # First we set all entries higher than our chosen capacity equal to the capacity.
+        self.balancing_with_storage[self.balancing_with_storage > k] = k
+
         # Looping over each country
-        for i, (balancing, storage, l) in enumerate(zip(self.balancing_relative, self.S_n, self.avg_L_EU)):
+        for i, (balancing, storage, curtailment, l) in enumerate(zip(self.balancing_with_storage,
+                                                                     self.S_n_relative, 
+                                                                     self.curtailment_relative, 
+                                                                     self.avg_L_n)):
             # Looping over each timestep
-            for j, (b, s) in enumerate(zip(balancing, storage)):
-                if not s == 0:
-                    if np.abs(s / l) < (self.beta_capacity - b
+            for j, (b, s, c) in enumerate(zip(balancing, storage, curtailment)):
+                # If storage is not full
+                if np.abs(s) > 0:
+                    # If there is curtailment present.
+                    if c > 0: 
+                        # If the storage depletion is greater than the curtailment.
+                        if np.abs(s) > c:
+                            # Subtract the curtailment or set to 0
+                            self.balancing_with_storage[i, j] = np.max((0, (b - c)))
+                            b = np.max((0, (b - c)))
+                        # If the storage depletion is smaller than the curtailment.
+                        else:
+                            # Subtract the storage depletion or set to 0.
+                            self.balancing_with_storage[i, j] = np.max((0, (b - np.abs(s))))
+                            b = np.max((0, (b - np.abs(s))))
+                    # If the storage depletion + backup is smaller than the capacity
+                    if np.abs(s) + b < k:
+                        # Add the storage to the backup.
+                        self.balancing_with_storage[i, j] += (np.abs(s))
+                    else:
+                        # Set backup to the maximum capacity
+                        self.balancing_with_storage[i, j] = k
+
+
 
 
 
@@ -161,3 +193,13 @@ def get_LCOE(N):
     return TOTAL_LCOE,LCOE_BE,LCOE_BC
 
 L = LCOE()
+
+def plotthings(calc=True):
+    if calc:
+        L.get_S_n()
+        L.get_BE()
+    plt.plot(L.balancing_relative[18], 'r')
+    plt.plot(L.balancing_with_storage[18], 'b')
+    plt.plot(L.S_n_relative[18], 'g')
+    plt.plot(L.curtailment_relative[18], 'c')
+    plt.show()
