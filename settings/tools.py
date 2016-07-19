@@ -141,9 +141,9 @@ def storage_size(backup_timeseries, q=0.99):
 
     return (max(storage), storage[:-1], offset_backup)
 
-def storage_size_relative(backup_without_storage, 
-                          beta_capacity, 
-                          curtailment=0, eta_in=1.0, eta_out=1.0):
+def storage_size_relative(backup_without_storage,
+                          beta_capacity,
+                          curtailment=None, eta_in=1.0, eta_out=1.0):
     '''
     Function that calculates the extreme backup timeseries.
 
@@ -157,14 +157,14 @@ def storage_size_relative(backup_without_storage,
         eta: number | the efficiency of the storage charging and discharging. For instance, eta=0.6
         is a charge efficiency of 0.6 and discharge efficiency of 1/0.6.
 
-        curtailment: numpy array | 
+        curtailment: numpy array |
 
     returns:
     '''
-    B = np.array(backup)
-    backup_with_storage = np.empty_like(backup_with_storage)
+    B = np.array(backup_without_storage)
+    backup_with_storage = np.empty_like(backup_without_storage)
     K = beta_capacity
-    if curtailment:
+    if curtailment != None:
         C = np.array(curtailment)
     else:
         C = np.zeros_like(B)
@@ -174,85 +174,61 @@ def storage_size_relative(backup_without_storage,
 
     # The initial maximum level of the emergency storage.
     S_max = 0
-
+    S = np.empty_like(backup_without_storage)
 
     for t, (b, c) in enumerate(zip(B, C)):
         K_C = K + c
-        K_C_B = K_c - b
-        if K_C_B < 0:
-            S[t] = np.min(S_max, (eta_out ** -1) * K_C_B)
+        K_C_B = K_C - b
+        if K_C_B < 0: # If the backup > capacity + curtailment = discharging storage
+            if t == 0:
+                S[t] = np.min((S_max, (eta_out ** - 1) * K_C_B))
+            else:
+                S[t] = np.min((S_max, S[t - 1] + (eta_out ** - 1) * K_C_B))
+        else: # If backup < capacity + curtailment = charging storage
+            if t == 0:
+                S[t] = np.min((S_max, (eta_in) * K_C_B))
+            else:
+                S[t] = np.min((S_max, S[t - 1] + (eta_in) * K_C_B))
 
-
-
-
-            
-
-
-
-
-
-
-
-
-
-
-    for t, (b, c) in enumerate(zip(B, C)):
-        if b > K: # Discharging storage
-            if t == 0: # First timestep
-                S[t] = np.min(S_max, (eta_out ** -1) * (K - b))
-            else: # Not first timestep
-                S[t] = np.min(S_max, S[t - 1] + (eta_out ** - 1) * (K - b))
-        else: # Charging the storage
-            s = S[t - 1] + c
-            if s < S_max:
-                S[t] = np.min(S_max, s + (eta_in) * 
-
-
-
-
-
-    for t, K_B in enumerate(K_minus_B):
-        if K_B < 0: # Discharging the storage
-            eta_loop = np.copy(eta_out) ** -1
+        if b > K:
+            backup_with_storage[t] = K
         else:
-            eta_loop = np.copy(eta_in) # Charging the storage
-        # Take care of first timestep.
-        if t == 0:
-            S[t] = np.min((S_max, eta_loop * K_B))
-        else:
-            S[t] = np.min((S_max, S[t - 1] + eta_loop * K_B))
+            if np.abs(S[t]) > K - b:
+                backup_with_storage[t] = K
+            else:
+                backup_with_storage[t] = b + np.abs(S[t])
 
-    return(S_max - np.min(S), S)
+    return(S_max - np.min(S), S, backup_with_storage)
 
-# def storage_size_relative(backup_generation_timeseries, beta_capacity, eta_in=1.0, eta_out=1.0,):
+# def storage_size_relative_old(backup_generation_timeseries, beta_capacity, eta_in=1.0, eta_out=1.0,):
 #     '''
 #     Function that calculates the extreme backup timeseries.
-# 
+# #
 #     parameters:
 #         backup_generation_timeseries: numpy array | a timeseries for the backup generation divided
 #         by the mean load in that node.
-# 
+# #
 #         beta_capacity: number | how much of the backup generation divided by the mean load in that
 #         node that is not served and thus need extreme backup.
-# 
+# #
 #         eta: number | the efficiency of the storage charging and discharging. For instance, eta=0.6
 #         is a charge efficiency of 0.6 and discharge efficiency of 1/0.6.
-# 
-#         curtailment: numpy array | 
-# 
+# #
+#         curtailment: numpy array |
+# #
 #     returns:
 #     '''
 #     G = np.array(backup_generation_timeseries)
 #     K = beta_capacity
-# 
+# #
 #     # Subtracting the backup generation from the backup capacity.
 #     K_minus_G = K - G
-# 
+# #
 #     # The initial maximum level of the emergency storage.
 #     S_n_max = 0
-# 
+# #
 #     S_n = np.empty_like(K_minus_G)
-# 
+# #
 #     for t, K_G in enumerate(K_minus_G):
 #         if K_G < 0: # Discharging the storage
 #             eta_loop = np.copy(eta_out) ** -1
@@ -263,7 +239,7 @@ def storage_size_relative(backup_without_storage,
 #             S_n[t] = np.min((S_n_max, eta_loop * K_G))
 #         else:
 #             S_n[t] = np.min((S_n_max, S_n[t - 1] + eta_loop * K_G))
-# 
+# #
 #     return(S_n_max - np.min(S_n), S_n)
 
 def convert_to_exp_notation(number, print_it=False):
@@ -328,7 +304,7 @@ def find_minima(timeseries):
 
     parameters:
         timeseries: list | a timeseries (here the non-served energy).
-    returns: 
+    returns:
         minima: list | a list of the minima in the clustered events.
     '''
     intervals = []
@@ -358,7 +334,7 @@ def find_minima(timeseries):
 def annuity(n, r):
     '''
     '''
-    return r/(1. -1./(1.+r)**n) 
+    return r/(1. -1./(1.+r)**n)
 
 def diff_max_min(timeseries):
     '''
@@ -368,4 +344,3 @@ def diff_max_min(timeseries):
     diff_max = np.max(timeseries_diff)
     diff_min = -np.min(timeseries_diff)
     return(diff_max, diff_min)
-

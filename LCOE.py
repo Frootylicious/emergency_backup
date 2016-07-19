@@ -22,11 +22,19 @@ class LCOE_storage():
         self.beta_capacity = 0.50
 
         # Costs ------------------------------------------------------------------------------------
-        self.Bc_price = 737
-        self.Be_price = 737
-        self.Ks_power_price = 737 # $/kW capacity - Capital power cost
-        self.Ks_energy_price = 11.2 # $/kWh - Capital cost per energy storage (cost of steel tanks) 
-        self.Kc_price = 12.2 # $/kW/year - O&M cost per unit of power capacity (equipment for electrolysis/fuel cells)
+
+        self.backup_price = {
+                             'CapCostPower': 0.9, # €/W
+                             'OpExFixed': 4.5, # €/kW/year
+                             'OpExVariable': 56, # €/MWh/year
+                            }
+        self.storage_price = {
+                              'CapCostPower': 737,
+                              'O&M': 12.2,
+                              'CapCostEnergy': 11.2,
+                             }
+
+
 
         self.annuity_n = 20
         self.annuity_r = 0.07
@@ -68,23 +76,28 @@ class LCOE_storage():
         self.get_K_ES()
         self.get_K_PS()
 
-
     def get_S_n(self):
         '''
         Calculate the storage size for each country and save it to a matrix.
+        Also calculates the backup storage size with curtailment.
 
         self.S_n : all countries' storage filling level timeseries.
         self.S_all : a storage filling level timeseries for the combined Europe.
         '''
         if not self.solved_S_n:
             print('Solving storage...')
-            S_n = [t.storage_size_relative(b,
-                                           self.beta_capacity,
-                                           eta_in=self.eta_store,
-                                           eta_out=self.eta_dispatch)[1] * L for b, L in zip(self.balancing_relative, self.avg_L_n)]
-            self.S_n = np.array(S_n)
+
+            self.S_n_relative = np.empty_like(self.balancing_relative)
+            self.Bs_n_relative = np.empty_like(self.balancing_relative)
+            for n, (b, c) in enumerate(zip(self.balancing_relative, self.curtailment_relative)):
+                self.S_n_relative[n], self.Bs_n_relative[n] = t.storage_size_relative(b,
+                                                                            self.beta_capacity,
+                                                                            curtailment=None,
+                                                                            eta_in=self.eta_store,
+                                                                            eta_out=self.eta_dispatch)[1:]
+
+            self.S_n = np.array([s * l for s, l in zip(self.S_n_relative, self.avg_L_n)])
             self.S_all = np.sum(self.S_n, axis=0)
-            self.S_n_relative = np.array([s / l for s, l in zip(self.S_n, self.avg_L_n)])
             self.solved_S_n = True
 
     def get_BC(self):
@@ -109,44 +122,9 @@ class LCOE_storage():
         If curtailment, if storage - use curtailment.
         If no curtailment, is storage - use backup.
         '''
-        if not self.solved_S_n:
-            self.get_S_n()
         if not self.solved_BE:
-            print('Solving backup energy...')
-            k = self.beta_capacity
-            self.balancing_with_storage = np.copy(self.balancing_relative)
-            # First we set all entries higher than our chosen capacity equal to the capacity.
-            self.balancing_with_storage[self.balancing_with_storage > k] = k
-
-            # Looping over each country
-            for i, (balancing, storage, curtailment, l) in enumerate(zip(self.balancing_with_storage,
-                                                                         self.S_n_relative,
-                                                                         self.curtailment_relative,
-                                                                         self.avg_L_n)):
-                # Looping over each timestep
-                for j, (b, s, c) in enumerate(zip(balancing, storage, curtailment)):
-                    # If storage is not full
-                    if np.abs(s) > 0:
-                        # If there is curtailment present.
-                        if c > 0:
-                            # If the storage depletion is greater than the curtailment.
-                            if np.abs(s) > c:
-                                # Subtract the curtailment or set to 0
-                                self.balancing_with_storage[i, j] = np.max((0, (b - c)))
-                                b = np.max((0, (b - c)))
-                            # If the storage depletion is smaller than the curtailment.
-                            else:
-                                # Subtract the storage depletion or set to 0.
-                                self.balancing_with_storage[i, j] = np.max((0, (b - np.abs(s))))
-                                b = np.max((0, (b - np.abs(s))))
-                        # If the storage depletion + backup is smaller than the capacity
-                        if np.abs(s) + b < k:
-                            # Add the storage to the backup.
-                            self.balancing_with_storage[i, j] += (np.abs(s))
-                        else:
-                            # Set backup to the maximum capacity
-                            self.balancing_with_storage[i, j] = k
-            self.BE = np.sum([b * L for b, L in zip(self.balancing_with_storage, self.avg_L_n)])
+            self.get_S_n()
+            self.BE = np.sum([b * l for b, l in zip(self.Bs_n_relative, self.avg_L_n)])
             self.solved_BE = True
 
     def get_K_ES(self):
@@ -171,13 +149,23 @@ class LCOE_storage():
 
 
     def calculate_costs(self):
-        self.Be_cost = self.Be_price * self.DOLLAR_TO_EURO
+        # Backup capacity
+        # Storage costs ----------------------------------------------------------------------------
+        storage_power = np.max(np.abs(self.K_PS_charge), np.abs(self.K_PS_discharge))
+        cost_storage_power = t.annuity(20, 0.07) * 737 + 12.2 * 1000 * self.DOLLAR_TO_EURO * 8
+        storage_energy = 
+        
+
+
+
+
         self.Bc_cost = self.Bc_price * self.DOLLAR_TO_EURO
-        self.Ks_cost = self.Ks_price * self.DOLLAR_TO_EURO
+        self.Be_cost = self.Be_price * self.DOLLAR_TO_EURO
         self.Kc_cost = self.Kc_price * self.DOLLAR_TO_EURO
+        self.Ks_cost = self.Ks_price * self.DOLLAR_TO_EURO
 
 
-    def test(self, beta_capacity=1.00):
+    def test(self, beta_capacity=0.50):
         if beta_capacity != self.beta_capacity:
             self.solved_S_n = False
             self.solved_BC = False
@@ -264,7 +252,7 @@ def plotthings(calc=False):
         L.get_S_n()
         L.get_BE()
     plt.plot(L.balancing_relative[18], 'r')
-    plt.plot(L.balancing_with_storage[18], 'b')
+    plt.plot(L.Bs_n_relative[18], 'b')
     plt.plot(L.S_n_relative[18], 'g')
     plt.plot(L.curtailment_relative[18], 'c')
     plt.show()
