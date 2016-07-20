@@ -149,20 +149,52 @@ class LCOE_storage():
 
 
     def calculate_costs(self):
+        ## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis. 
+        asset_CCGT = {
+            'Name': 'CCGT backup',
+            'CapExFixed': 0.9, #Euros/W
+            'OpExFixed': 4.5, #Euros/kW/year
+            'OpExVariable': 56.0, #Euros/MWh/year
+            'Lifetime': 30 #years
+            }
+
+
+        def annualizationFactor(lifetime, r=4.0): 
+            """Lifetime in years and r = rate in percent."""
+            if r==0: return lifetime
+            return (1-(1+(r/100.0))**-lifetime)/(r/100.0)
+
         # Backup capacity
-        # Storage costs ----------------------------------------------------------------------------
-        storage_power = np.max(np.abs(self.K_PS_charge), np.abs(self.K_PS_discharge))
-        cost_storage_power = t.annuity(20, 0.07) * 737 + 12.2 * 1000 * self.DOLLAR_TO_EURO * 8
-        storage_energy = 
+        # Storage costs (DAVID) --------------------------------------------------------------------
+        storage_power = np.max((np.abs(self.K_PS_charge), np.abs(self.K_PS_discharge)))
+        storage_capacity = self.K_ES
+
         
+        # Backup costs (LEON) ----------------------------------------------------------------------
+        # Need Backup Energy in  MWh/year
+        BE_per_year = self.BE / 8
+        # Backup capacity in MW
+        BC = self.BC
+        # Costs:
+        BE_costs = BE_per_year*asset_CCGT['OpExVariable'] * annualizationFactor(asset_CCGT['Lifetime'])
+        BC_costs = self.BC*(asset_CCGT['CapExFixed'] * 1e6 + asset_CCGT['OpExFixed'] * 1e3 * annualizationFactor(asset_CCGT['Lifetime']))
+
+        # Cost of electrolysis, fuel cells and steel tanks.
+        SP_costs = storage_power * (737 + annualizationFactor(20) * 12.2) * 1e3 * self.DOLLAR_TO_EURO
+        SE_costs = storage_capacity * 11.2 * 1e3 * self.DOLLAR_TO_EURO
 
 
 
 
-        self.Bc_cost = self.Bc_price * self.DOLLAR_TO_EURO
-        self.Be_cost = self.Be_price * self.DOLLAR_TO_EURO
-        self.Kc_cost = self.Kc_price * self.DOLLAR_TO_EURO
-        self.Ks_cost = self.Ks_price * self.DOLLAR_TO_EURO
+        scalingFactor_25 = self.all_load / 8 *annualizationFactor(25)
+        scalingFactor_30 = self.all_load / 8 *annualizationFactor(30)
+        scalingFactor_40 = self.all_load / 8 *annualizationFactor(40)
+        
+        LCOE_BE = BE_costs / scalingFactor_30
+        LCOE_BC = BC_costs / scalingFactor_30
+        
+        TOTAL_LCOE = LCOE_BE + LCOE_BC
+        print(t.convert_to_exp_notation(TOTAL_LCOE))
 
 
     def test(self, beta_capacity=0.50):
@@ -189,6 +221,21 @@ class LCOE_storage():
         print(t.convert_to_exp_notation(self.K_PS_discharge) + ' MWh')
         print('---------------------------------------')
         return
+
+    def test_BE(self):
+        self.BC_list = np.empty(26)
+        self.BE_list = np.empty(26)
+        self.SC_list = np.empty_like(self.BC_list)
+        self.S_charge_list = np.empty_like(self.BC_list)
+        for i, b in enumerate(np.linspace(0, 1.25, 26)):
+            self.test(beta_capacity=b)
+            self.BC_list[i] = self.BC
+            self.BE_list[i] = self.BE
+            self.SC_list[i] = self.K_ES
+            self.S_charge_list[i] = np.max((np.abs(self.K_PS_charge), np.abs(self.K_PS_discharge)))
+
+
+
 
 # --------------------------------------------------------------------------------------------------
 # --------------------------------------------------------------------------------------------------
