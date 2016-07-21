@@ -9,6 +9,7 @@ import settings.settings as s
 import settings.tools as t
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 class LCOE_storage():
     '''
@@ -17,6 +18,8 @@ class LCOE_storage():
 
     def __init__(self):
         # Variables --------------------------------------------------------------------------------
+#         self.eta_store = 1.00
+#         self.eta_dispatch = 1.00
         self.eta_store = 0.75
         self.eta_dispatch = 0.58
         self.beta_capacity = 0.50
@@ -85,14 +88,14 @@ class LCOE_storage():
         self.S_all : a storage filling level timeseries for the combined Europe.
         '''
         if not self.solved_S_n:
-            print('Solving storage...')
+#             print('Solving storage...')
 
             self.S_n_relative = np.empty_like(self.balancing_relative)
             self.Bs_n_relative = np.empty_like(self.balancing_relative)
             for n, (b, c) in enumerate(zip(self.balancing_relative, self.curtailment_relative)):
                 self.S_n_relative[n], self.Bs_n_relative[n] = t.storage_size_relative(b,
                                                                             self.beta_capacity,
-                                                                            curtailment=None,
+                                                                            curtailment=c,
                                                                             eta_in=self.eta_store,
                                                                             eta_out=self.eta_dispatch)[1:]
 
@@ -105,7 +108,6 @@ class LCOE_storage():
         Backup Capacity (BC)  [MW] which is \beta * <L_n> which is summed for each country
         '''
         if not self.solved_BC:
-            print('Solving backup capacity...')
             self.BC = np.sum([self.beta_capacity * L for L in self.avg_L_n])
             self.solved_BC = True
 
@@ -134,7 +136,6 @@ class LCOE_storage():
         if not self.solved_S_n:
             self.get_S_n()
         if not self.solved_K_ES:
-            print('Solving storage energy...')
             self.K_ES = -np.min(self.S_all)
             self.solved_K_ES = True
 
@@ -186,15 +187,24 @@ class LCOE_storage():
 
 
 
-        scalingFactor_25 = self.all_load / 8 *annualizationFactor(25)
-        scalingFactor_30 = self.all_load / 8 *annualizationFactor(30)
-        scalingFactor_40 = self.all_load / 8 *annualizationFactor(40)
+        scalingFactor_20 = self.all_load / 8 *annualizationFactor(20)
         
-        LCOE_BE = BE_costs / scalingFactor_30
-        LCOE_BC = BC_costs / scalingFactor_30
+        LCOE_BE = BE_costs / scalingFactor_20
+        LCOE_BC = BC_costs / scalingFactor_20
+
+        LCOE_SP = SP_costs / scalingFactor_20
+        LCOE_SE = SE_costs / scalingFactor_20
         
-        TOTAL_LCOE = LCOE_BE + LCOE_BC
-        print(t.convert_to_exp_notation(TOTAL_LCOE))
+        self.TOTAL_LCOE_B = LCOE_BE + LCOE_BC
+        self.TOTAL_LCOE_S = LCOE_SE + LCOE_SE
+
+        self.TOTAL_LCOE = self.TOTAL_LCOE_B + self.TOTAL_LCOE_S
+#         print('LCOE BACKUP: ')
+#         print(t.convert_to_exp_notation(self.TOTAL_LCOE_B))
+#         print('LCOE STORAGE: ')
+#         print(t.convert_to_exp_notation(self.TOTAL_LCOE_S))
+#         print('TOTAL LCOE: ')
+#         print(t.convert_to_exp_notation(self.TOTAL_LCOE))
 
 
     def test(self, beta_capacity=0.50):
@@ -206,89 +216,75 @@ class LCOE_storage():
             self.solved_K_ES = False
             self.beta_capacity=beta_capacity
             self.calculate_storage()
-        print('----------- Beta is: {:.2f} -----------'.format(self.beta_capacity))
-        print('AVERAGE LOAD EU')
-        print(t.convert_to_exp_notation(self.avg_L_EU) + ' MWh')
-        print('BACKUP CAPACITY')
-        print(t.convert_to_exp_notation(self.BC) + ' MWh')
-        print('BACKUP ENERGY')
-        print(t.convert_to_exp_notation(self.BE) + ' MWh')
-        print('EMERGENCY BACKUP CAPACITY')
-        print(t.convert_to_exp_notation(self.K_ES) + ' MWh')
-        print('EMERGENCY BACKUP MAX CHARGING PER HOUR')
-        print(t.convert_to_exp_notation(self.K_PS_charge) + ' MWh')
-        print('EMERGENCY BACKUP MAX DISCHARGING PER HOUR')
-        print(t.convert_to_exp_notation(self.K_PS_discharge) + ' MWh')
-        print('---------------------------------------')
+        print('----------- Beta is: {0} -----------'.format(self.beta_capacity))
+#         print('AVERAGE LOAD EU')
+#         print(t.convert_to_exp_notation(self.avg_L_EU) + ' MWh')
+#         print('BACKUP CAPACITY')
+#         print(t.convert_to_exp_notation(self.BC) + ' MWh')
+#         print('BACKUP ENERGY')
+#         print(t.convert_to_exp_notation(self.BE) + ' MWh')
+#         print('EMERGENCY BACKUP CAPACITY')
+#         print(t.convert_to_exp_notation(self.K_ES) + ' MWh')
+#         print('EMERGENCY BACKUP MAX CHARGING PER HOUR')
+#         print(t.convert_to_exp_notation(self.K_PS_charge) + ' MWh')
+#         print('EMERGENCY BACKUP MAX DISCHARGING PER HOUR')
+#         print(t.convert_to_exp_notation(self.K_PS_discharge) + ' MWh')
+#         print('---------------------------------------')
         return
 
     def test_BE(self):
-        self.BC_list = np.empty(26)
-        self.BE_list = np.empty(26)
-        self.SC_list = np.empty_like(self.BC_list)
-        self.S_charge_list = np.empty_like(self.BC_list)
         for i, b in enumerate(np.linspace(0, 1.25, 26)):
             self.test(beta_capacity=b)
+
+
+    def test_all(self, beta_list=np.linspace(0.00, 1.50, 1)):
+        self.beta_list = beta_list
+        n = len(beta_list)
+        self.BC_list = np.empty(n)
+        self.BE_list = np.empty(n)
+        self.SC_list = np.empty(n)
+        self.S_charge_list = np.empty(n)
+
+        self.backup_costs = np.empty(n)
+        self.storage_costs = np.empty(n)
+        self.total_costs = np.empty(n)
+
+        for i, b in tqdm(enumerate(beta_list)):
+            self.test(beta_capacity=b)
+
             self.BC_list[i] = self.BC
             self.BE_list[i] = self.BE
             self.SC_list[i] = self.K_ES
             self.S_charge_list[i] = np.max((np.abs(self.K_PS_charge), np.abs(self.K_PS_discharge)))
 
+            self.calculate_costs()
+            self.backup_costs[i] = self.TOTAL_LCOE_B
+            self.storage_costs[i] = self.TOTAL_LCOE_S
+            self.total_costs[i] = self.TOTAL_LCOE
+
+        np.save(s.results_folder + 'LCOE/' + 'BC_list', self.BC_list)
+        np.save(s.results_folder + 'LCOE/' + 'BE_list', self.BE_list)
+        np.save(s.results_folder + 'LCOE/' + 'SC_list', self.SC_list)
+        np.save(s.results_folder + 'LCOE/' + 'S_charge_list', self.S_charge_list)
+
+        np.save(s.results_folder + 'LCOE/' + 'backup_costs', self.backup_costs)
+        np.save(s.results_folder + 'LCOE/' + 'storage_costs', self.storage_costs)
+        np.save(s.results_folder + 'LCOE/' + 'total_costs', self.total_costs)
+            
+#         fig, (ax) = plt.subplots(1, 1, sharex=True)
+#         ax.plot(beta_list, self.total_costs, label='Total Costs')
+#         ax.plot(beta_list, self.backup_costs, label='Backup Costs')
+#         ax.plot(beta_list, self.storage_costs, label='Storage Costs')
+#         ax.set_ylabel(r'$€/MWh$')
+#         ax.set_xlabel(r'$\beta^B$')
+#         ax.legend()
+#         plt.show()
+        
+
 
 
 
 # --------------------------------------------------------------------------------------------------
-# --------------------------------------------------------------------------------------------------
-
-## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis.
-asset_CCGT = {
-    'Name': 'CCGT backup',
-    'CapExFixed': 0.9, #Euros/W
-    'OpExFixed': 4.5, #Euros/kW/year
-    'OpExVariable': 56.0, #Euros/MWh
-    'Lifetime': 30 #years
-    }
-
-asset_H2 = {
-        'CapExFixed': 737, # $/kW capacity
-        'OpExFixed': 12.2, # $/kW/year
-        'OpExVariable': 11.2, # $/kWh
-        }
-
-#####
-## The five essential cost terms from Emil's implementation:
-def cost_BE(N):
-    """Cost of BE is variable part of CCGT."""
-    BE = get_BE(N)
-    return BE*asset_CCGT['OpExVariable']*annualizationFactor(asset_CCGT['Lifetime'])
-
-def cost_BC(N):
-    """Cost of BC is fixed part of CCGT."""
-    BC = get_BC(N)
-    return BC*(asset_CCGT['CapExFixed']*1e6 + asset_CCGT['OpExFixed']*1e3*annualizationFactor(asset_CCGT['Lifetime']))
-
-
-#####
-## Total energy consumption: Used as scaling for the LCOE:
-def total_annual_energy_consumption(N):
-    return np.sum([n.mean for n in N])*HOURS_PER_YEAR
-
-#####
-## LCOE: With NEW definition: Scaling term depends on the lifetime of the investment:
-def get_LCOE(N):
-    scalingFactor_25 = np.sum(N.f.load) / N.f.nhours[0] * HOURS_PER_YEAR * annualizationFactor(25)
-    scalingFactor_30 = np.sum(N.f.load) / N.f.nhours[0] * HOURS_PER_YEAR * annualizationFactor(30)
-    scalingFactor_40 = np.sum(N.f.load) / N.f.nhours[0] * HOURS_PER_YEAR * annualizationFactor(40)
-#     scalingFactor_25 = sum([sum(n.f.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(25)
-#     scalingFactor_30 = sum([sum(n.f.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(30)
-#     scalingFactor_40 = sum([sum(n.f.load) for n in N])/N.number_of_hours*HOURS_PER_YEAR*annualizationFactor(40)
-
-    LCOE_BE = cost_BE(N) / scalingFactor_30
-    LCOE_BC = cost_BC(N) / scalingFactor_30
-
-    TOTAL_LCOE = LCOE_BE + LCOE_BC
-
-    return TOTAL_LCOE,LCOE_BE,LCOE_BC
 
 L = LCOE_storage()
 # --------------------------------------------------------------------------------------------------
