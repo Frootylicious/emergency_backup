@@ -143,7 +143,7 @@ def storage_size(backup_timeseries, q=0.99):
 
 def storage_size_relative(backup_without_storage,
                           beta_capacity,
-                          curtailment=None, eta_in=1.0, eta_out=1.0):
+                          curtailment=np.array([]), eta_in=1.0, eta_out=1.0):
     '''
     Function that calculates the extreme backup timeseries.
 
@@ -164,7 +164,7 @@ def storage_size_relative(backup_without_storage,
     B = np.array(backup_without_storage)
     backup_with_storage = np.empty_like(backup_without_storage)
     K = beta_capacity
-    if curtailment != None:
+    if curtailment.any():
         C = np.array(curtailment)
     else:
         C = np.zeros_like(B)
