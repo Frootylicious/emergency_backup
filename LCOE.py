@@ -1,32 +1,18 @@
 ############################################## TODO ################################################
+# Something wrong with Storage charge power.
 ####################################################################################################
 
 
 import settings.settings as s
 import settings.tools as t
+import settings.prices as p
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn
 from tqdm import tqdm
 seaborn.set_style('whitegrid')
 
-DOLLAR_TO_EURO = 0.7532 # David
 
-prices_backup = {
-        'Name': 'CCGT backup',
-        'CapExFixed': 0.9, #Euros/W
-        'OpExFixed': 4.5, #Euros/kW/year
-        'OpExVariable': 56.0, #Euros/MWh/year
-        'Lifetime': 30 #years
-        }
-
-prices_storage = {
-        'Cap_Power': 737 * DOLLAR_TO_EURO, # €/kW capacity (was $/kW)
-        'O&M_Power': 12.2 * DOLLAR_TO_EURO, # €/kW/year
-        'Cap_Energy': 11.2 * DOLLAR_TO_EURO,# €/kWH
-        'ChargeDischargeDifferent': False, # Whether the price for charging/discharging is the same or different.
-        'Lifetime': 20
-        }
 
 class LCOE_storage():
     '''
@@ -135,60 +121,75 @@ class LCOE_storage():
             if r==0: return lifetime
             return (1-(1+(r/100.0))**-lifetime)/(r/100.0)
 
-        # STORAGE --------------------------------------------------------------------------
-        # Storage Power Capacity (SPC) (fuel cells/electrolysis)
-        SPC = np.max((np.abs(SPC_c), np.abs(SPC_d)))
-        # Storage capacity (SEC) (steel tanks)
-        SEC = SEC
 
         # BACKUP ----------------------------------------------------------------------
         # Need Backup Energy in  MWh/year
         BE_per_year = BE / 8
         # Backup capacity in MW
         # Costs:
-        BE_costs = BE_per_year*prices_backup['OpExVariable'] * _annualizationFactor(prices_backup['Lifetime'])
-        BC_costs = BC*(prices_backup['CapExFixed'] * 1e6 + prices_backup['OpExFixed'] * 1e3 * _annualizationFactor(prices_backup['Lifetime']))
+        BE_costs = BE_per_year * prices_backup.OpExVariable * _annualizationFactor(prices_backup.Lifetime)
+#         BE_costs = BE_per_year*prices_backup['OpExVariable'] * _annualizationFactor(prices_backup['Lifetime'])
+        BC_costs = BC * (prices_backup.CapExFixed + prices_backup.OpExFixed * _annualizationFactor(prices_backup.Lifetime))
+#         BC_costs = BC*(prices_backup['CapExFixed'] * 1e6 + prices_backup['OpExFixed'] * 1e3 * _annualizationFactor(prices_backup['Lifetime']))
 
         # Cost of electrolysis and fuel cells.
-        if prices_storage['ChargeDischargeDifferent'] == False:
-            SPC_costs = SPC * (prices_storage['Cap_Power'] + _annualizationFactor(20) * prices_storage['O&M_Power']) * 1e3
-        else:
-            SPC_costs_charge = np.abs(SPC_c) * (prices_storage['Cap_Power_Charge'] +
-                    _annualizationFactor(prices_storage['Lifetime']) * prices_storage['O&M_Power']) * 1e3
-            SPC_costs_discharge = np.abs(SPC_d) * (prices_storage['Cap_Power_Discharge'] +
-                    _annualizationFactor(prices_storage['Lifetime']) * prices_storage['O&M_Power']) * 1e3
-            SPC_costs = SPC_costs_charge + SPC_costs_discharge
+#         if prices_storage['ChargeDischargeDifferent'] == False:
+#             SPC_costs = SPC * (prices_storage['Cap_Power'] + _annualizationFactor(20) * prices_storage['O&M_Power']) * 1e3
+#         else:
+#             SPC_costs_charge = np.abs(SPC_c) * (prices_storage['Cap_Power_Charge'] +
+#                     _annualizationFactor(prices_storage['Lifetime']) * prices_storage['O&M_Power']) * 1e3
+#             SPC_costs_discharge = np.abs(SPC_d) * (prices_storage['Cap_Power_Discharge'] +
+#                     _annualizationFactor(prices_storage['Lifetime']) * prices_storage['O&M_Power']) * 1e3
+#             SPC_costs = SPC_costs_charge + SPC_costs_discharge
 
-        # Cost of steel tanks.
-        SEC_costs = SEC * prices_storage['Cap_Energy'] * 1e3
+        # STORAGE --------------------------------------------------------------------------
+        # Storage Power Capacity - charge
+        SPC_c_costs = np.abs(SPC_c) * (prices_storage.CapPowerCharge +
+                                       _annualizationFactor(prices_storage.LifetimeCharge) *
+                                       prices_storage.OMPower) * 1e3
+        # Storage Power Capacity - discharge
+        SPC_d_costs = np.abs(SPC_d) * (prices_storage.CapPowerDischarge +
+                                       _annualizationFactor(prices_storage.LifetimeDischarge) *
+                                       prices_storage.OMPower) * 1e3
 
-        scalingFactor_backup = self.all_load / 8 * _annualizationFactor(prices_backup['Lifetime'])
-        scalingFactor_storage = self.all_load / 8 * _annualizationFactor(prices_storage['Lifetime'])
+        # Total costs for the Power Capacity = Charge Capacity costs + Discharge Capacity costs
+        SPC_costs = SPC_c_costs + SPC_d_costs
+
+        # Cost of steel tanks for storing hydrogen.
+        SEC_costs = SEC * prices_storage.CapStorage * 1e3
+
+        # Scaling factors
+        sf_backup = self.all_load / 8 * _annualizationFactor(prices_backup.Lifetime)
+        sf_storage_charge = self.all_load / 8 * _annualizationFactor(prices_storage.LifetimeCharge)
+        sf_storage_discharge = self.all_load / 8 * _annualizationFactor(prices_storage.LifetimeDischarge)
+        sf_storage_storage = self.all_load / 8 * _annualizationFactor(prices_storage.LifetimeStorage)
+
+#         LCOE_BC = BC_costs / scalingFactor_backup
+#         LCOE_BE = BE_costs / scalingFactor_backup
+
+        LCOE_BC = BC_costs / sf_backup if sf_backup != 0 else 0
+        LCOE_BE = BE_costs / sf_backup if sf_backup != 0 else 0
+        LCOE_SPC_c = SPC_c_costs / sf_storage_charge if sf_storage_charge != 0 else 0
+        LCOE_SPC_d = SPC_d_costs / sf_storage_discharge if sf_storage_discharge != 0 else 0
+        LCOE_SEC = SEC_costs / sf_storage_storage if sf_storage_storage != 0 else 0
 
 
-        scalingFactor_backup = self.all_load / 8 * _annualizationFactor(30)
-        scalingFactor_storage = self.all_load / 8 * _annualizationFactor(20)
-
-        LCOE_BC = BC_costs / scalingFactor_backup
-        LCOE_BE = BE_costs / scalingFactor_backup
-
-        LCOE_SPC = SPC_costs / scalingFactor_storage
-        LCOE_SEC = SEC_costs / scalingFactor_storage
-
-        return(LCOE_BC, LCOE_BE, LCOE_SPC, LCOE_SEC)
+        return(LCOE_BC, LCOE_BE, LCOE_SPC_c, LCOE_SPC_d, LCOE_SEC)
 
     def test(self, beta_capacity=0.50):
         self.beta_capacity=beta_capacity
         self.calculate_storage(beta_capacity=beta_capacity)
-        print('----------- Beta is: {:.4f} -----------'.format(self.beta_capacity))
+        print('\n----------- Beta is: {:.4f} -----------'.format(self.beta_capacity))
         return
 
 
-    def test_all(self, beta_list=np.linspace(0.00, 1.50, 3), solve_lists=False, save_lists=False,
+    def test_all(self, beta_list=np.linspace(0.00, 1.50, 31), solve_lists=False, save_lists=False,
             solve_LCOE=True, save_LCOE=False):
+        prices_backup = p.prices_backup_leon
+        prices_storage = p.prices_storage_david
         n = len(beta_list)
         if solve_lists:
-            print('Solving BC, BE, SPC_c, SPC_d...')
+            print('Solving BC, BE, SPC_c, SPC_d and SEC...')
             print('{0} iterations in total...'.format(n))
             self.beta_list = beta_list
             self.BC_list = np.empty(n)
@@ -229,7 +230,8 @@ class LCOE_storage():
         if solve_LCOE:
             self.LCOE_BC_list = np.empty(n)
             self.LCOE_BE_list = np.empty(n)
-            self.LCOE_SPC_list = np.empty(n)
+            self.LCOE_SPC_c_list = np.empty(n)
+            self.LCOE_SPC_d_list = np.empty(n)
             self.LCOE_SEC_list = np.empty(n)
 
             for i, (b, BC, BE, SPC_c, SPC_d, SEC) in tqdm(enumerate(zip(beta_list,
@@ -240,27 +242,31 @@ class LCOE_storage():
                                                                         self.SEC_list))):
                     (self.LCOE_BC_list[i],
                      self.LCOE_BE_list[i],
-                     self.LCOE_SPC_list[i],
+                     self.LCOE_SPC_c_list[i],
+                     self.LCOE_SPC_d_list[i],
                      self.LCOE_SEC_list[i]) = self.calculate_costs(BC, BE,
                                                                    SPC_c,
                                                                    SPC_d,
                                                                    SEC, prices_backup, prices_storage)
             if save_LCOE:
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_BE_list_{0}'.format(n), self.LCOE_BE_list)
                 np.save(s.results_folder + 'LCOE/' + 'LCOE_BC_list_{0}'.format(n), self.LCOE_BC_list)
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_SPC_list_{0}'.format(n), self.LCOE_SPC_list)
+                np.save(s.results_folder + 'LCOE/' + 'LCOE_BE_list_{0}'.format(n), self.LCOE_BE_list)
+                np.save(s.results_folder + 'LCOE/' + 'LCOE_SPC_c_list_{0}'.format(n), self.LCOE_SPC_c_list)
+                np.save(s.results_folder + 'LCOE/' + 'LCOE_SPC_d_list_{0}'.format(n), self.LCOE_SPC_d_list)
                 np.save(s.results_folder + 'LCOE/' + 'LCOE_SEC_list_{0}'.format(n), self.LCOE_SEC_list)
 
         else:
-            LCOE_BC = np.load(path + 'LCOE_BC_list.npy')
-            LCOE_BE = np.load(path + 'LCOE_BE_list.npy')
-            LCOE_SPC = np.load(path + 'LCOE_SPC_list.npy')
-            LCOE_SEC = np.load(path + 'LCOE_SEC_list.npy')
+            self.LCOE_BC_list = np.load(path + 'LCOE_BC_list.npy')
+            self.LCOE_BE_list = np.load(path + 'LCOE_BE_list.npy')
+            self.LCOE_SPC_c_list = np.load(path + 'LCOE_SPC_c_list.npy')
+            self.LCOE_SPC_d_list = np.load(path + 'LCOE_SPC_d_list.npy')
+            self.LCOE_SEC_list = np.load(path + 'LCOE_SEC_list.npy')
 
 
 # --------------------------------------------------------------------------------------------------
 
 L = LCOE_storage()
+L.test_all(beta_list=np.linspace(0, 1.5, 16), solve_lists=True, save_lists=True, solve_LCOE=True, save_LCOE=True)
 # --------------------------------------------------------------------------------------------------
 
 def plot_timeseries():
@@ -273,7 +279,7 @@ def plot_timeseries():
     plt.show()
 
 
-def plot_results(n=15):
+def plot_results(n=31):
     path = s.results_folder + 'LCOE/'
 
     BC = np.load(path + 'BC_list_{0}.npy'.format(n))
@@ -285,24 +291,26 @@ def plot_results(n=15):
     LCOE_BC = np.load(path + 'LCOE_BC_list_{0}.npy'.format(n))
     LCOE_BE = np.load(path + 'LCOE_BE_list_{0}.npy'.format(n))
     LCOE_SEC = np.load(path + 'LCOE_SEC_list_{0}.npy'.format(n))
-    LCOE_SPC = np.load(path + 'LCOE_SPC_list_{0}.npy'.format(n))
+    LCOE_SPC_c = np.load(path + 'LCOE_SPC_c_list_{0}.npy'.format(n))
+    LCOE_SPC_d = np.load(path + 'LCOE_SPC_d_list_{0}.npy'.format(n))
+    LCOE_SPC = LCOE_SPC_c + LCOE_SPC_d
 
     beta_list = np.linspace(0, 1.5, len(BC))
 
     backup_costs = LCOE_BC + LCOE_BE
-    storage_costs = LCOE_SPC + LCOE_SEC
+    storage_costs = LCOE_SPC_c + LCOE_SPC_d + LCOE_SEC
     total_costs = backup_costs + storage_costs
 
     # Plotting stacked plot of all LCOE
     fig1, (ax1) = plt.subplots(1, 1, sharex=True)
-    l = ('LCOE BC', 'LCOE BE', 'LCOE SPC', 'LCOE SEC')
-    ax1.stackplot(beta_list, LCOE_BC, LCOE_BE, LCOE_SPC, LCOE_SEC, labels=l)
+    l = ('LCOE BC', 'LCOE BE', 'LCOE SPC_c', 'LCOE SPC_d', 'LCOE SEC')
+    ax1.stackplot(beta_list, LCOE_BC, LCOE_BE, LCOE_SPC_c, LCOE_SPC_d, LCOE_SEC, labels=l)
     ax1.set_xlim([0, 1.5])
     ax1.set_ylim([0, 30])
     ax1.set_ylabel(r'$€/MWh$')
     ax1.set_xlabel(r'$\beta^B$')
     ax1.legend()
-    fig1.savefig(path + 'stacked_LCOE.pdf', bbox_inches='tight')
+    fig1.savefig(path + 'stacked_LCOE_{0}.pdf'.format(n), bbox_inches='tight')
 
     # Plots of power and energy
     fig2, (ax21, ax22, ax23, ax24, ax25) = plt.subplots(5, 1, sharex=True)
@@ -318,23 +326,25 @@ def plot_results(n=15):
     ax23.legend()
     ax24.legend()
     ax25.legend()
-    fig2.savefig(path + 'BC_BE_SPC_SEC.pdf', bbox_inches='tight')
+    fig2.savefig(path + 'BC_BE_SPC_SEC_{0}.pdf'.format(n), bbox_inches='tight')
 
     # Plots of individual costs.
-    fig3, (ax31, ax32, ax33, ax34) = plt.subplots(4, 1, sharex=True, sharey=True)
+    fig3, (ax31, ax32, ax33, ax34, ax35) = plt.subplots(5, 1, sharex=True, sharey=True)
     ax31.plot(beta_list, LCOE_BC, label = 'LCOE Backup Capacity')
     ax32.plot(beta_list, LCOE_BE, label = 'LCOE Backup Energy')
-    ax33.plot(beta_list, LCOE_SPC, label = 'LCOE Storage Power')
-    ax34.plot(beta_list, LCOE_SEC, label = 'LCOE Storage Capaticy')
-    ax34.set_xlabel(r'$\beta^B$')
+    ax33.plot(beta_list, LCOE_SPC_c, label = 'LCOE Charge Storage Power')
+    ax34.plot(beta_list, LCOE_SPC_d, label = 'LCOE Disharge Storage Power')
+    ax35.plot(beta_list, LCOE_SEC, label = 'LCOE Storage Capaticy')
+    ax35.set_xlabel(r'$\beta^B$')
     fig3.text(0.04, 0.5, '$€/MWh$', va='center', rotation='vertical')
-    ax34.set_ylim([0, 30])
-    ax34.set_xlim([0, 1.5])
+    ax35.set_ylim([0, 30])
+    ax35.set_xlim([0, 1.5])
     ax31.legend()
     ax32.legend()
     ax33.legend()
     ax34.legend()
-    fig3.savefig(path + 'LCOE_BC_BE_SPC_SEC.pdf', bbox_inches='tight')
+    ax35.legend()
+    fig3.savefig(path + 'LCOE_BC_BE_SPC_SEC_{0}.pdf'.format(n), bbox_inches='tight')
 
     plt.show()
 
