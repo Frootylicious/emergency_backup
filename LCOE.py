@@ -27,6 +27,8 @@ class LCOE_storage():
         # Variables --------------------------------------------------------------------------------
         self.eta_store = 0.75 # Efficiency of the hydrogen storage
         self.eta_dispatch = 0.58
+#         self.eta_store = 1.00
+#         self.eta_dispatch = 1.00
         self.beta_capacity = 1.00 # Backup capacity in units of mean load.
 
         # Costs ------------------------------------------------------------------------------------
@@ -63,10 +65,10 @@ class LCOE_storage():
         self.Bs_n_relative = np.empty_like(self.backup_relative)
         for n, (b, c) in enumerate(zip(self.backup_relative, self.curtailment_relative)):
             self.Sn_relative[n], self.Bs_n_relative[n] = t.storage_size_relative(b,
-                    beta_capacity,
-                    curtailment=c,
-                    eta_in=self.eta_store,
-                    eta_out=self.eta_dispatch)[1:]
+                                                                                 beta_capacity,
+                                                                                 curtailment=c,
+                                                                                 eta_in=self.eta_store,
+                                                                                 eta_out=self.eta_dispatch)[1:]
 
             self.Sn = np.array([s * l for s, l in zip(self.Sn_relative, self.avg_L_n)])
         self.S_all = np.sum(self.Sn, axis=0)
@@ -107,6 +109,7 @@ class LCOE_storage():
 
 
     def calculate_storage(self, beta_capacity):
+        self.beta_capacity = beta_capacity
         self.get_Sn(beta_capacity)
         self.get_BC(beta_capacity)
         self.get_BE()
@@ -128,19 +131,7 @@ class LCOE_storage():
         # Backup capacity in MW
         # Costs:
         BE_costs = BE_per_year * prices_backup.OpExVariable * _annualizationFactor(prices_backup.Lifetime)
-#         BE_costs = BE_per_year*prices_backup['OpExVariable'] * _annualizationFactor(prices_backup['Lifetime'])
         BC_costs = BC * (prices_backup.CapExFixed + prices_backup.OpExFixed * _annualizationFactor(prices_backup.Lifetime))
-#         BC_costs = BC*(prices_backup['CapExFixed'] * 1e6 + prices_backup['OpExFixed'] * 1e3 * _annualizationFactor(prices_backup['Lifetime']))
-
-        # Cost of electrolysis and fuel cells.
-#         if prices_storage['ChargeDischargeDifferent'] == False:
-#             SPC_costs = SPC * (prices_storage['Cap_Power'] + _annualizationFactor(20) * prices_storage['O&M_Power']) * 1e3
-#         else:
-#             SPC_costs_charge = np.abs(SPC_c) * (prices_storage['Cap_Power_Charge'] +
-#                     _annualizationFactor(prices_storage['Lifetime']) * prices_storage['O&M_Power']) * 1e3
-#             SPC_costs_discharge = np.abs(SPC_d) * (prices_storage['Cap_Power_Discharge'] +
-#                     _annualizationFactor(prices_storage['Lifetime']) * prices_storage['O&M_Power']) * 1e3
-#             SPC_costs = SPC_costs_charge + SPC_costs_discharge
 
         # STORAGE --------------------------------------------------------------------------
         # Storage Power Capacity - charge
@@ -177,101 +168,108 @@ class LCOE_storage():
         return(LCOE_BC, LCOE_BE, LCOE_SPC_c, LCOE_SPC_d, LCOE_SEC)
 
     def test(self, beta_capacity=0.50):
-        self.beta_capacity=beta_capacity
+        print('\n----------- Beta is: {:.4f} -----------'.format(beta_capacity))
         self.calculate_storage(beta_capacity=beta_capacity)
-        print('\n----------- Beta is: {:.4f} -----------'.format(self.beta_capacity))
         return
 
 
-    def test_all(self, beta_list=np.linspace(0.00, 1.50, 31), solve_lists=False, save_lists=False,
-            solve_LCOE=True, save_LCOE=False):
+    def solve_lists(self, beta_list=np.linspace(0.00, 1.50, 31)):
         prices_backup = p.prices_backup_leon
-        prices_storage = p.prices_storage_david
+        prices_storage = p.prices_storage_bussar
+        #prices_storage = p.prices_storage_david
         n = len(beta_list)
-        if solve_lists:
-            print('Solving BC, BE, SPC_c, SPC_d and SEC...')
-            print('{0} iterations in total...'.format(n))
-            self.beta_list = beta_list
-            self.BC_list = np.empty(n)
-            self.BE_list = np.empty(n)
-            self.SPC_c_list = np.empty(n)
-            self.SPC_d_list = np.empty(n)
-            self.SEC_list = np.empty(n)
 
-            for i, b in tqdm(enumerate(beta_list)):
-                self.test(beta_capacity=b)
+        print('Solving BC, BE, SPC_c, SPC_d and SEC...')
+        print('{0} iterations in total...'.format(n))
+        self.beta_list = beta_list
+        self.BC_list = np.empty(n)
+        self.BE_list = np.empty(n)
+        self.SPC_c_list = np.empty(n)
+        self.SPC_d_list = np.empty(n)
+        self.SEC_list = np.empty(n)
 
-                BC = self.BC
-                BE = self.BE
-                SPC_c = np.abs(self.SPC_c)
-                SPC_d = np.abs(self.SPC_d)
-                SEC = self.SEC
+        for i, b in tqdm(enumerate(beta_list)):
+            self.test(beta_capacity=b)
 
-                self.BC_list[i] = BC
-                self.BE_list[i] = BE
-                self.SPC_c_list[i] = SPC_c
-                self.SPC_d_list[i] = SPC_d
-                self.SEC_list[i] = SEC
-            
-            if save_lists:
-                np.save(s.results_folder + 'LCOE/' + 'BC_list_{0}'.format(n), self.BC_list)
-                np.save(s.results_folder + 'LCOE/' + 'BE_list_{0}'.format(n), self.BE_list)
-                np.save(s.results_folder + 'LCOE/' + 'SEC_list_{0}'.format(n), self.SEC_list)
-                np.save(s.results_folder + 'LCOE/' + 'SPC_c_list_{0}'.format(n), self.SPC_c_list)
-                np.save(s.results_folder + 'LCOE/' + 'SPC_d_list_{0}'.format(n), self.SPC_d_list)
+            BC = self.BC
+            BE = self.BE
+            SPC_c = np.abs(self.SPC_c)
+            SPC_d = np.abs(self.SPC_d)
+            SEC = self.SEC
 
-        else:
-            self.BC_list = np.load(s.results_folder + 'LCOE/' + 'BC_list_{0}.npy'.format(n))
-            self.BE_list = np.load(s.results_folder + 'LCOE/' + 'BE_list_{0}.npy'.format(n))
-            self.SPC_c_list = np.load(s.results_folder + 'LCOE/' + 'SPC_c_list_{0}.npy'.format(n))
-            self.SPC_d_list = np.load(s.results_folder + 'LCOE/' + 'SPC_d_list_{0}.npy'.format(n))
-            self.SEC_list = np.load(s.results_folder + 'LCOE/' + 'SEC_list_{0}.npy'.format(n))
+            self.BC_list[i] = BC
+            self.BE_list[i] = BE
+            self.SPC_c_list[i] = SPC_c
+            self.SPC_d_list[i] = SPC_d
+            self.SEC_list[i] = SEC
 
-        if solve_LCOE:
-            self.LCOE_BC_list = np.empty(n)
-            self.LCOE_BE_list = np.empty(n)
-            self.LCOE_SPC_c_list = np.empty(n)
-            self.LCOE_SPC_d_list = np.empty(n)
-            self.LCOE_SEC_list = np.empty(n)
+        self.save_lists()
 
-            for i, (b, BC, BE, SPC_c, SPC_d, SEC) in tqdm(enumerate(zip(beta_list,
-                                                                        self.BC_list,
-                                                                        self.BE_list,
-                                                                        self.SPC_c_list,
-                                                                        self.SPC_d_list,
-                                                                        self.SEC_list))):
-                    (self.LCOE_BC_list[i],
-                     self.LCOE_BE_list[i],
-                     self.LCOE_SPC_c_list[i],
-                     self.LCOE_SPC_d_list[i],
-                     self.LCOE_SEC_list[i]) = self.calculate_costs(BC, BE,
-                                                                   SPC_c,
-                                                                   SPC_d,
-                                                                   SEC, prices_backup, prices_storage)
-            if save_LCOE:
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_BC_list_{0}'.format(n), self.LCOE_BC_list)
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_BE_list_{0}'.format(n), self.LCOE_BE_list)
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_SPC_c_list_{0}'.format(n), self.LCOE_SPC_c_list)
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_SPC_d_list_{0}'.format(n), self.LCOE_SPC_d_list)
-                np.save(s.results_folder + 'LCOE/' + 'LCOE_SEC_list_{0}'.format(n), self.LCOE_SEC_list)
+    def solve_LCOE(self, beta_list=np.linspace(0, 1.5, 31)):
+        self.load_lists()
 
-        else:
-            self.LCOE_BC_list = np.load(path + 'LCOE_BC_list.npy')
-            self.LCOE_BE_list = np.load(path + 'LCOE_BE_list.npy')
-            self.LCOE_SPC_c_list = np.load(path + 'LCOE_SPC_c_list.npy')
-            self.LCOE_SPC_d_list = np.load(path + 'LCOE_SPC_d_list.npy')
-            self.LCOE_SEC_list = np.load(path + 'LCOE_SEC_list.npy')
+        self.LCOE_BC_list = np.empty(n)
+        self.LCOE_BE_list = np.empty(n)
+        self.LCOE_SPC_c_list = np.empty(n)
+        self.LCOE_SPC_d_list = np.empty(n)
+        self.LCOE_SEC_list = np.empty(n)
 
+        for i, (b, BC, BE, SPC_c, SPC_d, SEC) in tqdm(enumerate(zip(beta_list,
+                                                                    self.BC_list,
+                                                                    self.BE_list,
+                                                                    self.SPC_c_list,
+                                                                    self.SPC_d_list,
+                                                                    self.SEC_list))):
+                (self.LCOE_BC_list[i],
+                 self.LCOE_BE_list[i],
+                 self.LCOE_SPC_c_list[i],
+                 self.LCOE_SPC_d_list[i],
+                 self.LCOE_SEC_list[i]) = self.calculate_costs(BC, BE,
+                                                               SPC_c,
+                                                               SPC_d,
+                                                               SEC, prices_backup, prices_storage)
+        self.save_LCOE_list()
 
+# SAVING AND LOADING -------------------------------------------------------------------------------
+
+    def save_lists(self, n):
+        path = s.results_folder + 'LCOE/'
+        np.save(path + 'BC_list_{0}'.format(n), self.BC_list)
+        np.save(path + 'BE_list_{0}'.format(n), self.BE_list)
+        np.save(path + 'SEC_list_{0}'.format(n), self.SEC_list)
+        np.save(path + 'SPC_c_list_{0}'.format(n), self.SPC_c_list)
+        np.save(path + 'SPC_d_list_{0}'.format(n), self.SPC_d_list)
+
+    def load_lists(self, n):
+        path = s.results_folder + 'LCOE/'
+        self.BC_list = np.load(path + 'BC_list_{0}.npy'.format(n))
+        self.BE_list = np.load(path + 'BE_list_{0}.npy'.format(n))
+        self.SPC_c_list = np.load(path + 'SPC_c_list_{0}.npy'.format(n))
+        self.SPC_d_list = np.load(path + 'SPC_d_list_{0}.npy'.format(n))
+        self.SEC_list = np.load(path + 'SEC_list_{0}.npy'.format(n))
+
+    def save_LCOE_list(self, n):
+        path = s.results_folder + 'LCOE/'
+        np.save(path + 'LCOE_BC_list_{0}'.format(n), self.LCOE_BC_list)
+        np.save(path + 'LCOE_BE_list_{0}'.format(n), self.LCOE_BE_list)
+        np.save(path + 'LCOE_SPC_c_list_{0}'.format(n), self.LCOE_SPC_c_list)
+        np.save(path + 'LCOE_SPC_d_list_{0}'.format(n), self.LCOE_SPC_d_list)
+        np.save(path + 'LCOE_SEC_list_{0}'.format(n), self.LCOE_SEC_list)
+
+    def load_LCOE_list(self, n):
+        path = s.results_folder + 'LCOE/'
+        self.LCOE_BC_list = np.load(path + 'LCOE_BC_list_{0}.npy'.format(n))
+        self.LCOE_BE_list = np.load(path + 'LCOE_BE_list_{0}.npy'.format(n))
+        self.LCOE_SPC_c_list = np.load(path + 'LCOE_SPC_c_list_{0}.npy'.format(n))
+        self.LCOE_SPC_d_list = np.load(path + 'LCOE_SPC_d_list_{0}.npy'.format(n))
+        self.LCOE_SEC_list = np.load(path + 'LCOE_SEC_list_{0}.npy'.format(n))
 # --------------------------------------------------------------------------------------------------
 
 L = LCOE_storage()
-L.test_all(beta_list=np.linspace(0, 1.5, 16), solve_lists=True, save_lists=True, solve_LCOE=True, save_LCOE=True)
+# L.test_all(beta_list=np.linspace(0, 1.5, 16), solve_lists=True, save_lists=True, solve_LCOE=True, save_LCOE=True)
 # --------------------------------------------------------------------------------------------------
 
 def plot_timeseries():
-    L.get_Sn()
-    L.get_BE()
     plt.plot(L.backup_relative[18], 'r')
     plt.plot(L.Bs_n_relative[18], 'b')
     plt.plot(L.Sn_relative[18], 'g')
@@ -348,4 +346,54 @@ def plot_results(n=31):
 
     plt.show()
 
-# plot_results()
+
+def plot_SPC(beta_capacity=1.00):
+    L.test(beta_capacity=beta_capacity)
+    fig, (ax) = plt.subplots(1, 1, sharex=True, sharey=True)
+    S = L.S_all
+    diff = np.diff(S)
+    maxx = np.max(diff)
+    minn = np.min(diff)
+    print(t.convert_to_exp_notation(minn), t.convert_to_exp_notation(maxx))
+    argmax = np.argmax(diff)
+    argmin = np.argmin(diff)
+    ax.plot(S, 'g')
+    ax.plot((argmax, argmax+1), (S[argmax], S[argmax+1]), 'r', lw=5, label='max $={0}$'.format(t.convert_to_exp_notation(maxx)))
+    ax.plot((argmin, argmin+1), (S[argmin], S[argmin+1]), 'b', lw=5, label='min $={0}$'.format(t.convert_to_exp_notation(minn)))
+    ax.plot((argmax, argmax), (S[argmax], ax.get_ylim()[0]), 'r', lw=1)
+    ax.plot((argmin, argmin), (S[argmin], ax.get_ylim()[0]), 'b', lw=1)
+    ax.set_xlabel('$t$')
+    ax.set_ylabel('Power $[kWh]$')
+    fig.text(0.25, 0.12, r'$\beta^B = {:.4f}$'.format(beta_capacity), ha='right')
+    ax.legend(loc='lower right')
+    fig.savefig(s.results_folder + 'LCOE/SPC/{:.4f}.png'.format(beta_capacity))
+
+def plot_charge_discharge_distribution(beta_capacity=0.50):
+    L.test(beta_capacity=beta_capacity)
+    fig, (ax) = plt.subplots(1, 1, sharex=True, sharey=True)
+    S = L.S_all
+    S /= L.avg_L_EU
+    diff = np.diff(S)
+    diff = diff[np.abs(diff) > 0.05]
+    diff[diff < 0] *= L.eta_dispatch
+    diff[diff > 0] *= L.eta_store
+
+    hist_charge, bins_charge = np.histogram(diff, bins=100)
+    left_charge, right_charge = bins_charge[:-1], bins_charge[1:]
+    X_charge = np.array([left_charge, right_charge]).T.flatten()
+    Y_charge = np.array([hist_charge, hist_charge]).T.flatten()
+
+
+    ax.plot(X_charge, Y_charge, 'b', alpha=0.8, label=r'')
+    ax.legend(fontsize=20)
+    ax.set_xlabel('$diff(S_n)$')
+    ax.set_ylabel('$p(diff(S_n))$')
+    ax.set_xlim(np.array([-800000, 800000])/L.avg_L_EU)
+    plt.savefig(s.results_folder + 'LCOE/histogram/histogram_{:.4f}.png'.format(beta_capacity))
+    plt.close(fig)
+
+n = 13 
+# test_SPC_c = np.empty(n)
+for b in tqdm(np.linspace(0, 1.2, n)):
+# #     plot_SPC(beta_capacity=b)
+    plot_charge_discharge_distribution(b)
