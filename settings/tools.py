@@ -98,149 +98,78 @@ def quantile_old(quantile, dataset, cutzeros=False):
             #print 'Found %.3f quantile' % (1 - q)
             return bin_edges[-index]
 
-
-def storage_size_old(backup_timeseries, q=0.99):
-    """
-    Docstring
-    """
-    q = quantile_old(q, backup_timeseries)
-    storage = backup_timeseries - q
-    for index, val in enumerate(storage):
-        if index == 0:
-            if storage[index] < 0:
-                storage[index] = 0
-        else:
-            storage[index] += storage[index - 1]
-            if storage[index] < 0:
-                storage[index] = 0
-    return max(storage)
-
-def storage_size(backup_timeseries, q=0.99):
-    """
-    """
-    q = quantile(0.99, backup_timeseries)
-    offset_backup = backup_timeseries - q
-    # plt.plot(offset_backup)
-    # plt.show()
-    storage = np.zeros(len(offset_backup) + 1)
-    # i = 0
-    for index, val in enumerate(offset_backup):
-        # if val > 0:
-            # print(i)
-            # i += 1
-        storage[index] += val
-        if storage[index] < 0:
-                storage[index] = 0
-        storage[index + 1] = storage[index]
-        # if val < 0:
-            # storage[index] += val
-            # if storage[index] < 0:
-            #     storage[index] = 0
-            # storage[index + 1] = storage[index]
-
-
-    return (max(storage), storage[:-1], offset_backup)
-
-def storage_size_relative(backup_without_storage,
-                          beta_capacity,
-                          curtailment=np.array([]), eta_in=1.0, eta_out=1.0):
+def storage_size(backup_without_storage,
+                 backup_beta_capacity,
+                 curtailment=np.array([]), 
+                 eta_in=1.0, 
+                 eta_out=1.0,
+                 charging_capacity=np.inf,
+                 discharging_capacity=np.inf):
     '''
-    Function that calculates the extreme backup timeseries.
+    Function that calculates the storage time series.
 
     parameters:
-        backup_generation_timeseries: numpy array | a timeseries for the backup generation divided
-        by the mean load in that node.
-
-        beta_capacity: number | how much of the backup generation divided by the mean load in that
-        node that is not served and thus need extreme backup.
-
-        eta: number | the efficiency of the storage charging and discharging. For instance, eta=0.6
-        is a charge efficiency of 0.6 and discharge efficiency of 1/0.6.
-
-        curtailment: numpy array |
+        backup_without_storage: sequence (list, tuple, array) | time series for the backup generation
+        in units of mean load.
+        backup_beta_capacity: number | backup capacity in units of mean load.
+        curtailment: sequence(list, tuple, array) | time series for the curtailment. Can be omitted.
+        eta_in: number between 0 and 1 | charging efficiency.
+        eta_out: number between 0 and 1 | discharging efficiency.
+        charging_capacity: number | the maximum allowed charging capacity in units of mean load.
+        discharging_capacity: number | the maximum allowed discharging capacity in units of mean load.
 
     returns:
+        K_SE: numpy array | storage energy capacity i.e. lowest point in storage time series.
+        S: numpy array | storage filling level time series.
+        B_storage: numpy array | the backup generation timeseries with a storage.
     '''
     B = np.array(backup_without_storage)
-    backup_with_storage = np.empty_like(backup_without_storage)
-    K = beta_capacity
+    B_storage = np.empty_like(backup_without_storage)
+    KB = backup_beta_capacity
+    KSPc = charging_capacity
+    KSPd = - discharging_capacity
+
+    # Check if curtailment is not zero - i.e. we consider curtailment.
     if curtailment.any():
         C = np.array(curtailment)
     else:
         C = np.zeros_like(B)
 
-    # Subtracting the backup generation from the backup capacity.
-    K_minus_B = K - B
-
     # The initial maximum level of the emergency storage.
     S_max = 0
-    S = np.empty_like(backup_without_storage)
+    # The storage filling level time series.
+    S = np.empty_like(B)
 
     for t, (b, c) in enumerate(zip(B, C)):
-        K_C = K + c
-        K_C_B = K_C - b
+        K_C_B = KB + c - b
         if K_C_B < 0: # If the backup > capacity + curtailment = discharging storage
             if t == 0:
-                S[t] = np.min((S_max, (eta_out ** - 1) * K_C_B))
+                s = np.min((S_max, (eta_out ** - 1) * K_C_B))
+                S[t] = np.max((s, KSPd))
             else:
-                S[t] = np.min((S_max, S[t - 1] + (eta_out ** - 1) * K_C_B))
+                s = np.min((S_max, S[t - 1] + (eta_out ** - 1) * K_C_B))
+                S[t] = np.max((s, KSPd + S[t - 1]))
         else: # If backup < capacity + curtailment = charging storage
             if t == 0:
-                S[t] = np.min((S_max, (eta_in) * K_C_B))
+                s = np.min((S_max, (eta_in) * K_C_B))
+                S[t] = np.min((s, KSPc))
             else:
-                S[t] = np.min((S_max, S[t - 1] + (eta_in) * K_C_B))
+                s = np.min((S_max, S[t - 1] + (eta_in) * K_C_B))
+                S[t] = np.min((s, KSPc + S[t - 1]))
 
-        if b > K:
-            backup_with_storage[t] = K
+        # Calculate the new backup generation time series
+        if b > KB:
+            B_storage[t] = KB
         else:
-            if np.abs(S[t]) > K - b:
-                backup_with_storage[t] = K
+            if np.abs(S[t]) > KB - b:
+                B_storage[t] = KB
             else:
-                backup_with_storage[t] = b + np.abs(S[t])
+                B_storage[t] = b + np.abs(S[t])
 
-    return(S_max - np.min(S), S, backup_with_storage)
+    # Storage energy capacity
+    K_SE = S_max - np.min(S)
 
-# def storage_size_relative_old(backup_generation_timeseries, beta_capacity, eta_in=1.0, eta_out=1.0,):
-#     '''
-#     Function that calculates the extreme backup timeseries.
-# #
-#     parameters:
-#         backup_generation_timeseries: numpy array | a timeseries for the backup generation divided
-#         by the mean load in that node.
-# #
-#         beta_capacity: number | how much of the backup generation divided by the mean load in that
-#         node that is not served and thus need extreme backup.
-# #
-#         eta: number | the efficiency of the storage charging and discharging. For instance, eta=0.6
-#         is a charge efficiency of 0.6 and discharge efficiency of 1/0.6.
-# #
-#         curtailment: numpy array |
-# #
-#     returns:
-#     '''
-#     G = np.array(backup_generation_timeseries)
-#     K = beta_capacity
-# #
-#     # Subtracting the backup generation from the backup capacity.
-#     K_minus_G = K - G
-# #
-#     # The initial maximum level of the emergency storage.
-#     S_n_max = 0
-# #
-#     S_n = np.empty_like(K_minus_G)
-# #
-#     for t, K_G in enumerate(K_minus_G):
-#         if K_G < 0: # Discharging the storage
-#             eta_loop = np.copy(eta_out) ** -1
-#         else:
-#             eta_loop = np.copy(eta_in) # Charging the storage
-#         # Take care of first timestep.
-#         if t == 0:
-#             S_n[t] = np.min((S_n_max, eta_loop * K_G))
-#         else:
-#             S_n[t] = np.min((S_n_max, S_n[t - 1] + eta_loop * K_G))
-# #
-#     return(S_n_max - np.min(S_n), S_n)
+    return(K_SE, S, B_storage)
 
 def convert_to_exp_notation(number, print_it=False):
     n = '{:.2E}'.format(number)
@@ -343,4 +272,28 @@ def diff_max_min(timeseries):
     timeseries_diff = np.diff(timeseries)
     diff_max = np.max(timeseries_diff)
     diff_min = -np.min(timeseries_diff)
-    return(diff_max, diff_min)
+    argmax = np.argmax(timeseries_diff)
+    argmin = np.argmin(timeseries_diff)
+    return((diff_max, diff_min), (argmax, argmin))
+
+def fancy_histogram(array, bins=10, density=False, range=None):
+    '''
+    Outputs the bin edges of np.histogram as well as the y-values
+    corresponding to the edges, instead of the y-values in 
+    between the edges.
+
+    Example
+    -------
+    hist, bin_edges = fancy_histogram(array)
+    plt.plot(bin_edges, hist, 'b-')
+    '''
+    hist, bin_edges = np.histogram(array, bins=bins, range=range,
+                                   density=density)
+    left, right = bin_edges[:-1], bin_edges[1:]
+    X = np.array([left, right]).T.flatten()
+    Y = np.array([hist, hist]).T.flatten()
+
+    return Y, X
+    
+
+

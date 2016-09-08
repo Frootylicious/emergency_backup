@@ -8,6 +8,7 @@ test*
 TODO.txt
 output.txt
 nohup.out
+tmp_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
