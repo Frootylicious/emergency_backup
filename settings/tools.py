@@ -276,6 +276,13 @@ def diff_max_min(timeseries):
     argmin = np.argmin(timeseries_diff)
     return((diff_max, diff_min), (argmax, argmin))
 
+def get_objectives(S, eta_in=1, eta_out=1):
+        K_SE = -np.min(S)
+        diff = np.diff(S)
+        K_SPc = np.max(diff) / eta_in
+        K_SPd = -np.min(diff) * eta_out
+        return(K_SE, K_SPc, K_SPd)
+
 def fancy_histogram(array, bins=10, density=False, range=None):
     '''
     Outputs the bin edges of np.histogram as well as the y-values
