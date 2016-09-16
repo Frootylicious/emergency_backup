@@ -10,6 +10,7 @@ rcParams.update({'figure.autolayout': True})
 plt.style.use('seaborn-whitegrid')
 
 """
+File to calculate objectives and costs
 """
 
 # Variables to tune --------------------------------------------------------------------------------
@@ -84,9 +85,26 @@ LCOE1 = t.calculate_costs(beta_b, np.sum(Bs1), K_SPc1, K_SPd1, K_SE1, L_DE,
 (LCOE_BC_1, LCOE_BE_1, LCOE_SPCc_1, LCOE_SPCd_1, LCOE_SEC_1) = LCOE1
 LCOE_B_1 = np.sum((LCOE_BC_1, LCOE_BE_1))
 LCOE_S_1 = np.sum((LCOE_SPCc_1, LCOE_SPCd_1, LCOE_SEC_1))
+# Without storage
+LCOE2 = t.calculate_costs(np.max(B), np.sum(B), 1, 1, 1, L_DE,
+                          p.prices_backup_leon, p.prices_storage_bussar)
+(LCOE_BC_2, LCOE_BE_2) = LCOE2[:2]
+LCOE_B_2 = np.sum((LCOE_BC_2 + LCOE_BE_2))
 
 # Printing results ---------------------------------------------------------------------------------
-def print_costs(LCOE_B, LCOE_S, LCOE_BC, LCOE_BE, LCOE_SPCc, LCOE_SPCd, LCOE_SEC, title=''):
+def print_objectives(K_B, BE, K_SPc, K_SPd, K_SE, eta_in, eta_out):
+    s0 = 'BC      = {0:.4f}'.format(K_B)
+    s1 = 'BE      = {0:.4f}'.format(BE)
+    s2 = 'K_SPc   = {0:.4f}'.format(K_SPc)
+    s3 = 'K_SPd   = {0:.4f}'.format(K_SPd)
+    s4 = 'K_SE    = {0:.4f}'.format(K_SE)
+    s5 = 'eta_in  = {0:.4f}'.format(eta_in)
+    s6 = 'eta_out = {0:.4f}'.format(eta_out)
+    s = '\n'.join((s0, s1, s2, s3, s4, s5, s6))
+    print(s)
+    return
+
+def print_costs(LCOE_B, LCOE_S, LCOE_BC, LCOE_BE, LCOE_SPCc, LCOE_SPCd, LCOE_SEC):
     s0 = 'LCOE Total = {0:.2f}'.format(LCOE_B + LCOE_S)
     s1 = 'LCOE B     = {0:.2f}'.format(LCOE_B)
     s2 = 'LCOE BC    = {0:.2f}'.format(LCOE_BC)
@@ -99,36 +117,29 @@ def print_costs(LCOE_B, LCOE_S, LCOE_BC, LCOE_BE, LCOE_SPCc, LCOE_SPCd, LCOE_SEC
     print(s)
     return
 
-def print_objectives(K_B, BE, K_SPc, K_SPd, K_SE, eta_in, eta_out):
-    s0 = 'K_B     = {0:.4f}'.format(K_B)
-    s1 = 'BE      = {0:.4f}'.format(BE)
-    s2 = 'K_SPc   = {0:.4f}'.format(K_SPc)
-    s3 = 'K_SPd   = {0:.4f}'.format(K_SPd)
-    s4 = 'K_SE    = {0:.4f}'.format(K_SE)
-    s5 = 'eta_in  = {0:.4f}'.format(eta_in)
-    s6 = 'eta_out = {0:.4f}'.format(eta_out)
-    s = '\n'.join((s0, s1, s2, s3, s4, s5, s6))
-    print(s)
-    return
-
 def print_all_objectives():
     print('Network parameters: ')
     print('alpha: {0:.2f}, beta^B: {1:.2f}, gamma: {2:.2f}'.format(alpha, beta_b, gamma))
     print('\n#### Objectives: ####')
-    print('Unconstrained: ')
+    print('Unconstrained storage: ')
     print_objectives(beta_b, np.sum(Bs0), K_SPc0, K_SPd0, K_SE0, 1, 1)
-    print('\nConstrained: ')
+    print('\nConstrained storage: ')
     print_objectives(beta_b, np.sum(Bs1), K_SPc1, K_SPd1, K_SE1, eta_in, eta_out)
     print('\nNon-served energy: {0:.2f}\nNon-served hours: {1}'.format(np.sum(E_NS), E_NS_hours))
+    print('\nNo storage')
+    print_objectives(np.max(B), np.sum(B), 0, 0, 0, 0, 0)
     return
 
 def print_all_costs():
     print('\n#### LCOE: ####')
-    print('Unconstrained:')
+    print('Unconstrained storage:')
     print_costs(LCOE_B_0, LCOE_S_0, LCOE_BC_0, LCOE_BE_0, LCOE_SPCc_0, LCOE_SPCd_0, LCOE_SEC_0)
-    print('\nConstrained:')
+    print('\nConstrained storage:')
     print_costs(LCOE_B_1, LCOE_S_1, LCOE_BC_1, LCOE_BE_1, LCOE_SPCc_1, LCOE_SPCd_1, LCOE_SEC_1)
+    print('\nWithout storage:')
+    print_costs(LCOE_B_2, 0, LCOE_BC_2, LCOE_BE_2, 0, 0, 0)
     return
+
 
 # Plotting timeseries ------------------------------------------------------------------------------
 def plot_timeseries():
