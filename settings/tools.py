@@ -98,13 +98,15 @@ def quantile_old(quantile, dataset, cutzeros=False):
             #print 'Found %.3f quantile' % (1 - q)
             return bin_edges[-index]
 
+# --------------------------------------------------------------------------------------------------
 def storage_size(backup_without_storage,
                  backup_beta_capacity,
                  curtailment=np.array([]), 
                  eta_in=1.0, 
                  eta_out=1.0,
                  charging_capacity=np.inf,
-                 discharging_capacity=np.inf):
+                 discharging_capacity=np.inf,
+                 energy_capacity=np.inf):
     '''
     Function that calculates the storage time series.
 
@@ -117,6 +119,7 @@ def storage_size(backup_without_storage,
         eta_out: number between 0 and 1 | discharging efficiency.
         charging_capacity: number | the maximum allowed charging capacity in units of mean load.
         discharging_capacity: number | the maximum allowed discharging capacity in units of mean load.
+        energy_capacity: number | the maximum allowed storage energy capacity
 
     returns:
         K_SE: numpy array | storage energy capacity i.e. lowest point in storage time series.
@@ -128,6 +131,7 @@ def storage_size(backup_without_storage,
     KB = backup_beta_capacity
     KSPc = charging_capacity
     KSPd = - discharging_capacity
+    KSE = - energy_capacity
 
     # Check if curtailment is not zero - i.e. we consider curtailment.
     if curtailment.any():
@@ -145,10 +149,10 @@ def storage_size(backup_without_storage,
         if K_C_B < 0: # If the backup > capacity + curtailment = discharging storage
             if t == 0:
                 s = np.min((S_max, (eta_out ** - 1) * K_C_B))
-                S[t] = np.max((s, KSPd))
+                S[t] = np.max((s, KSPd, KSE))
             else:
                 s = np.min((S_max, S[t - 1] + (eta_out ** - 1) * K_C_B))
-                S[t] = np.max((s, KSPd + S[t - 1]))
+                S[t] = np.max((s, KSPd + S[t - 1], KSE))
         else: # If backup < capacity + curtailment = charging storage
             if t == 0:
                 s = np.min((S_max, (eta_in) * K_C_B))
@@ -170,6 +174,79 @@ def storage_size(backup_without_storage,
     K_SE = S_max - np.min(S)
 
     return(K_SE, S, B_storage)
+# --------------------------------------------------------------------------------------------------
+# def storage_size(backup_without_storage,
+#                  backup_beta_capacity,
+#                  curtailment=np.array([]), 
+#                  eta_in=1.0, 
+#                  eta_out=1.0,
+#                  charging_capacity=np.inf,
+#                  discharging_capacity=np.inf):
+#     '''
+#     Function that calculates the storage time series.
+# 
+#     parameters:
+#         backup_without_storage: sequence (list, tuple, array) | time series for the backup generation
+#         in units of mean load.
+#         backup_beta_capacity: number | backup capacity in units of mean load.
+#         curtailment: sequence(list, tuple, array) | time series for the curtailment. Can be omitted.
+#         eta_in: number between 0 and 1 | charging efficiency.
+#         eta_out: number between 0 and 1 | discharging efficiency.
+#         charging_capacity: number | the maximum allowed charging capacity in units of mean load.
+#         discharging_capacity: number | the maximum allowed discharging capacity in units of mean load.
+# 
+#     returns:
+#         K_SE: numpy array | storage energy capacity i.e. lowest point in storage time series.
+#         S: numpy array | storage filling level time series.
+#         B_storage: numpy array | the backup generation timeseries with a storage.
+#     '''
+#     B = np.array(backup_without_storage)
+#     B_storage = np.empty_like(backup_without_storage)
+#     KB = backup_beta_capacity
+#     KSPc = charging_capacity
+#     KSPd = - discharging_capacity
+# 
+#     # Check if curtailment is not zero - i.e. we consider curtailment.
+#     if curtailment.any():
+#         C = np.array(curtailment)
+#     else:
+#         C = np.zeros_like(B)
+# 
+#     # The initial maximum level of the emergency storage.
+#     S_max = 0
+#     # The storage filling level time series.
+#     S = np.empty_like(B)
+# 
+#     for t, (b, c) in enumerate(zip(B, C)):
+#         K_C_B = KB + c - b
+#         if K_C_B < 0: # If the backup > capacity + curtailment = discharging storage
+#             if t == 0:
+#                 s = np.min((S_max, (eta_out ** - 1) * K_C_B))
+#                 S[t] = np.max((s, KSPd))
+#             else:
+#                 s = np.min((S_max, S[t - 1] + (eta_out ** - 1) * K_C_B))
+#                 S[t] = np.max((s, KSPd + S[t - 1]))
+#         else: # If backup < capacity + curtailment = charging storage
+#             if t == 0:
+#                 s = np.min((S_max, (eta_in) * K_C_B))
+#                 S[t] = np.min((s, KSPc))
+#             else:
+#                 s = np.min((S_max, S[t - 1] + (eta_in) * K_C_B))
+#                 S[t] = np.min((s, KSPc + S[t - 1]))
+# 
+#         # Calculate the new backup generation time series
+#         if b > KB:
+#             B_storage[t] = KB
+#         else:
+#             if np.abs(S[t]) > KB - b:
+#                 B_storage[t] = KB
+#             else:
+#                 B_storage[t] = b + np.abs(S[t])
+# 
+#     # Storage energy capacity
+#     K_SE = S_max - np.min(S)
+# 
+#     return(K_SE, S, B_storage)
 
 def convert_to_exp_notation(number, print_it=False):
     n = '{:.2E}'.format(number)
@@ -303,4 +380,66 @@ def fancy_histogram(array, bins=10, density=False, range=None):
     return Y, X
     
 
+def calculate_costs(BC, BE, SPC_c, SPC_d, SEC, L, prices_backup, prices_storage, years=8):
+    '''
+    Function that ...
 
+    parameters:
+        filename: string | the name of the object without the suffix and extension:
+        'c_s_a0.80_g1.00_b1.00'
+        N_or_F:   string | whether you want the network- or flow-object returned.
+
+    returns:
+        temp_load: numpy_object | the contents of the chosen file.
+
+    '''
+    ## Cost assumptions: // Source: Rolando PHD thesis, table 4.1, page 109. Emil's thesis.
+
+    def _annualizationFactor(lifetime, r=4.0):
+        """Lifetime in years and r = rate in percent."""
+        if r==0: return lifetime
+        return (1-(1+(r/100.0))**-lifetime)/(r/100.0)
+
+    all_load = np.sum(L)
+
+    # BACKUP ----------------------------------------------------------------------
+    # Need Backup Energy in  MWh/year
+    BE_per_year = BE / 8
+    # Backup capacity in MW
+    # Costs:
+    BE_costs = BE_per_year * prices_backup.OpExVariable * _annualizationFactor(prices_backup.Lifetime)
+    BC_costs = BC * (prices_backup.CapExFixed + prices_backup.OpExFixed * _annualizationFactor(prices_backup.Lifetime))
+
+    # STORAGE --------------------------------------------------------------------------
+    # Storage Power Capacity - charge
+    SPC_c_costs = np.abs(SPC_c) * (prices_storage.CapPowerCharge +
+                                    _annualizationFactor(prices_storage.LifetimeCharge) *
+                                    prices_storage.OMPower) * 1e3
+    # Storage Power Capacity - discharge
+    SPC_d_costs = np.abs(SPC_d) * (prices_storage.CapPowerDischarge +
+                                    _annualizationFactor(prices_storage.LifetimeDischarge) *
+                                    prices_storage.OMPower) * 1e3
+
+    # Total costs for the Power Capacity = Charge Capacity costs + Discharge Capacity costs
+    SPC_costs = SPC_c_costs + SPC_d_costs
+
+    # Cost of steel tanks for storing hydrogen.
+    SEC_costs = SEC * prices_storage.CapStorage * 1e3
+
+    # Scaling factors
+    sf_backup = all_load / 8 * _annualizationFactor(prices_backup.Lifetime)
+    sf_storage_charge = all_load / 8 * _annualizationFactor(prices_storage.LifetimeCharge)
+    sf_storage_discharge = all_load / 8 * _annualizationFactor(prices_storage.LifetimeDischarge)
+    sf_storage_storage = all_load / 8 * _annualizationFactor(prices_storage.LifetimeStorage)
+
+#         LCOE_BC = BC_costs / scalingFactor_backup
+#         LCOE_BE = BE_costs / scalingFactor_backup
+
+    LCOE_BC = BC_costs / sf_backup if sf_backup != 0 else 0
+    LCOE_BE = BE_costs / sf_backup if sf_backup != 0 else 0
+    LCOE_SPC_c = SPC_c_costs / sf_storage_charge if sf_storage_charge != 0 else 0
+    LCOE_SPC_d = SPC_d_costs / sf_storage_discharge if sf_storage_discharge != 0 else 0
+    LCOE_SEC = SEC_costs / sf_storage_storage if sf_storage_storage != 0 else 0
+
+
+    return(LCOE_BC, LCOE_BE, LCOE_SPC_c, LCOE_SPC_d, LCOE_SEC)
