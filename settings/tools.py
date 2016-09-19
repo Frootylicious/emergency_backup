@@ -400,11 +400,17 @@ def calculate_costs(BC, BE, SPC_c, SPC_d, SEC, L, prices_backup, prices_storage,
         if r==0: return lifetime
         return (1-(1+(r/100.0))**-lifetime)/(r/100.0)
 
+    avg_L = np.mean(L)
     all_load = np.sum(L)
+    BC *= avg_L
+    BE *= avg_L
+    SPC_c *= avg_L
+    SPC_d *= avg_L
+    SEC *= avg_L
 
     # BACKUP ----------------------------------------------------------------------
     # Need Backup Energy in  MWh/year
-    BE_per_year = BE / 8
+    BE_per_year = BE / years
     # Backup capacity in MW
     # Costs:
     BE_costs = BE_per_year * prices_backup.OpExVariable * _annualizationFactor(prices_backup.Lifetime)
@@ -427,10 +433,10 @@ def calculate_costs(BC, BE, SPC_c, SPC_d, SEC, L, prices_backup, prices_storage,
     SEC_costs = SEC * prices_storage.CapStorage * 1e3
 
     # Scaling factors
-    sf_backup = all_load / 8 * _annualizationFactor(prices_backup.Lifetime)
-    sf_storage_charge = all_load / 8 * _annualizationFactor(prices_storage.LifetimeCharge)
-    sf_storage_discharge = all_load / 8 * _annualizationFactor(prices_storage.LifetimeDischarge)
-    sf_storage_storage = all_load / 8 * _annualizationFactor(prices_storage.LifetimeStorage)
+    sf_backup = all_load / years * _annualizationFactor(prices_backup.Lifetime)
+    sf_storage_charge = all_load / years * _annualizationFactor(prices_storage.LifetimeCharge)
+    sf_storage_discharge = all_load / years * _annualizationFactor(prices_storage.LifetimeDischarge)
+    sf_storage_storage = all_load / years * _annualizationFactor(prices_storage.LifetimeStorage)
 
 #         LCOE_BC = BC_costs / scalingFactor_backup
 #         LCOE_BE = BE_costs / scalingFactor_backup
