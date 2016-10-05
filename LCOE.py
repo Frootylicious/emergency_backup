@@ -11,6 +11,9 @@ rcParams.update({'figure.autolayout': True})
 plt.style.use('seaborn-whitegrid')
 
 class LCOE_Objectives():
+    '''
+    Class to calculate a storage with corresponding objectives and LCOE.
+    '''
     def __init__(self):
         # Decimals.
         self.decimals_variables = 1
@@ -41,7 +44,7 @@ class LCOE_Objectives():
         self.print_costs()
 
     def plot_all(self):
-#         self.plot_timeseries()
+        self.plot_timeseries()
         self.plot_bar()
 
     # Setting parameters for network.
@@ -53,7 +56,7 @@ class LCOE_Objectives():
     # Setting constraints for storage.
     def set_storage_constraints(self,
                                 KSPc=0.06,
-                                KSPd=0.15,
+                                KSPd=0.14,
                                 eta_in=p.prices_storage_bussar.EfficiencyCharge,
                                 eta_out=p.prices_storage_bussar.EfficiencyDischarge,
                                 add_curtailment=True,
@@ -149,7 +152,7 @@ class LCOE_Objectives():
         self.LCOE_B_9999 = np.sum((self.LCOE_BC_9999 + self.LCOE_BE_9999))
 
     # Printing results -----------------------------------------------------------------------------
-    def print_objectives(self):
+    def print_objectives(self, only_constrained=True):
         def _get_objective_string(K_B, BE, K_SPc, K_SPd, K_SE, eta_in, eta_out):
             s0 = 'BC      = {0:.{prec}f}'.format(K_B, prec=self.decimals_objectives)
             s1 = 'BE      = {0:.{prec}f}'.format(BE, prec=self.decimals_objectives)
@@ -184,10 +187,13 @@ class LCOE_Objectives():
         s14 = _get_objective_string(np.max(self.B_999), np.sum(self.B_999), 0, 0, 0, 0, 0)
         s15 = 'NO storage: 99.99 % ----------'
         s16 = _get_objective_string(np.max(self.B_9999), np.sum(self.B_9999), 0, 0, 0, 0, 0)
-        s = '\n'.join(('\n', s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16))
+        if only_constrained:
+            s = '\n'.join(('\n', s0, s1, s2, s3, s6, s7))
+        else:
+            s = '\n'.join(('\n', s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16))
         print(s)
 
-    def print_costs(self):
+    def print_costs(self, only_constrained=True):
         def _get_costs_string(LCOE_B, LCOE_S, LCOE_BC, LCOE_BE, LCOE_SPCc, LCOE_SPCd, LCOE_SEC):
             s0 = 'LCOE Total = {0:.{prec}f}'.format(LCOE_B + LCOE_S, prec=self.decimals_LCOE)
             s1 = 'LCOE B     = {0:.{prec}f}'.format(LCOE_B, prec=self.decimals_LCOE)
@@ -226,7 +232,10 @@ class LCOE_Objectives():
         s13 = _get_costs_string(self.LCOE_B_9999, 0,
                                self.LCOE_BC_9999, self.LCOE_BE_9999,
                                0, 0, 0)
-        s = '\n'.join(('\n', s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13))
+        if only_constrained:
+            s = '\n'.join(('\n', s0, s1, s4, s5))
+        else:
+            s = '\n'.join(('\n', s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13))
         print(s)
 
 
@@ -288,77 +297,88 @@ class LCOE_Objectives():
         colors = sns.color_palette()
         index = np.arange(6)
         width = 0.5
-        BC = np.array([self.LCOE_BC_0, 
-                       self.LCOE_BC_1, 
+        # Sequence: 100, 99.99, 99.9, 99, constrained, unconstrained.
+        # 2, 9999, 999, 99, 0, 1
+        BC = np.array([
                        self.LCOE_BC_2, 
-                       self.LCOE_BC_99,
+                       self.LCOE_BC_9999,
                        self.LCOE_BC_999,
-                       self.LCOE_BC_9999])
-        BE = np.array([self.LCOE_BE_0, 
-                       self.LCOE_BE_1, 
+                       self.LCOE_BC_99,
+                       self.LCOE_BC_0, 
+                       self.LCOE_BC_1, 
+                       ])
+        BE = np.array([
                        self.LCOE_BE_2,
-                       self.LCOE_BE_99,
+                       self.LCOE_BE_9999,
                        self.LCOE_BE_999,
-                       self.LCOE_BE_9999])
-        SPCc = np.array([self.LCOE_SPCc_0, self.LCOE_SPCc_1, 0, 0, 0, 0])
-        SPCd = np.array([self.LCOE_SPCd_0, self.LCOE_SPCd_1, 0, 0, 0, 0])
-        SEC = np.array([self.LCOE_SEC_0, self.LCOE_SEC_1, 0, 0, 0, 0])
+                       self.LCOE_BE_99,
+                       self.LCOE_BE_0, 
+                       self.LCOE_BE_1, 
+                       ])
+        SPCc = np.array([0, 0, 0, 0, self.LCOE_SPCc_0, self.LCOE_SPCc_1])
+        SPCd = np.array([0, 0, 0, 0, self.LCOE_SPCd_0, self.LCOE_SPCd_1])
+        SEC = np.array([0, 0, 0, 0, self.LCOE_SEC_0, self.LCOE_SEC_1])
         fig, (ax) = plt.subplots(1, 1)
-        p1 = ax.bar(index, BC, width, color=colors[0])
-        p2 = ax.bar(index, BE, width, bottom=BC, color=colors[1])
-        p3 = ax.bar(index, SPCc, width, bottom=BC+BE, color=colors[2])
-        p4 = ax.bar(index, SPCd, width, bottom=BC+BE+SPCc, color=colors[3])
-        p5 = ax.bar(index, SEC, width, bottom=BC+BE+SPCc+SPCd, color=colors[4])
+        p5 = ax.bar(index, SEC, width, bottom=BC+BE+SPCc+SPCd, color=colors[4], label='SEC')
+        p4 = ax.bar(index, SPCd, width, bottom=BC+BE+SPCc, color=colors[3], label='SPCd')
+        p3 = ax.bar(index, SPCc, width, bottom=BC+BE, color=colors[2], label='SPCc')
+        p2 = ax.bar(index, BE, width, bottom=BC, color=colors[1], label='BE')
+        p1 = ax.bar(index, BC, width, color=colors[0], label='BC')
         ax.set_ylabel(r'$€/MWh$')
         ax.xaxis.grid(False)
-        plt.xticks(index + width/2., ('Unconstrained Storage', 
-                                      'Constrained Storage', 
+        plt.xticks(index + width/2., (
                                       'Without Storage\n100 %',
-                                      'Without Storage\n99 %',
+                                      'Without Storage\n 99.99 %',
                                       'Without Storage\n 99.9 %',
-                                      'Without Storage\n 99.99 %'))
+                                      'Without Storage\n99 %',
+                                      'Unconstrained Storage', 
+                                      'Constrained Storage', 
+                                      ))
         labels = ('BC', 'BE', 'SPCc', 'SPCd', 'SEC')
-        ax.legend((p5[0], p4[0], p3[0], p2[0], p1[0]), labels, loc='best')
+        ax.legend(loc='best')
+        s00 = r'$\alpha = {0:.2f} \quad \gamma = {1:.2f} \quad \beta^B = {1:.2f}$'.format(self.alpha, self.gamma, self.beta_b)
         s01 = (r'$\widetilde{{\eta}}^\mathrm{{in}} = {0:.{prec}f},'
                 '\quad \widetilde{{\eta}}^\mathrm{{out}} = {1:.{prec}f}$'.format(self.eta_in, self.eta_out, prec=2))
         s02 = (r'$\mathcal{{K}}^{{SPc}}={0:.{prec}f}, \mathcal{{K}}^{{SPd}}={1:.{prec}f}, '
                 '\mathcal{{K}}^{{SE}}={2:.{prec}f}$'.format(self.K_SPc1, self.K_SPd1, self.K_SE1, prec=4))
-        s03 = r'$E^{{NS}} = {0:.{prec}f}, \quad NS: {1:.0f}/{2:.0f}={3:.{prec}f}$'.format(np.sum(self.E_NS),
+        s03 = r'$E^{{NS}} = {0:.{prec}f}, \quad NS: {1:.0f}/{2:.0f}={3:.5f}$'.format(np.sum(self.E_NS),
                 self.E_NS_hours, self.nhours, self.E_NS_hours/self.nhours, prec=4)
-        s0all = '\n'.join((s01, s02, s03))
-        anchored_text0 = AnchoredText(s0all, loc=9, frameon=False)
-        ax.add_artist(anchored_text0)
+        s0all = '\n'.join(('Constrained Storage Values:', s00, s01, s02, s03))
+        ax.text(5 + width/2, self.LCOE_B_1 + self.LCOE_S_1 + 1.0, s0all, ha='center', va='bottom',
+                bbox=dict(facecolor='None', edgecolor='k'))
+#         anchored_text0 = AnchoredText(s0all, loc=9, frameon=False)
+#         ax.add_artist(anchored_text0)
 
         if show_numbers:
             def _add_text(ax, x, y, v):
                 ax.text(x, y, '{0:.3f}'.format(v), va='center', ha='center')
             # Backup Capacity Text
-            _add_text(ax, 0+width/2, BC[0]/2, self.LCOE_BC_0)
-            _add_text(ax, 1+width/2, BC[1]/2, self.LCOE_BC_1)
-            _add_text(ax, 2+width/2, BC[2]/2, self.LCOE_BC_2)
+            _add_text(ax, 0+width/2, BC[0]/2, self.LCOE_BC_2)
+            _add_text(ax, 1+width/2, BC[1]/2, self.LCOE_BC_9999)
+            _add_text(ax, 2+width/2, BC[2]/2, self.LCOE_BC_999)
             _add_text(ax, 3+width/2, BC[3]/2, self.LCOE_BC_99)
-            _add_text(ax, 4+width/2, BC[4]/2, self.LCOE_BC_999)
-            _add_text(ax, 5+width/2, BC[5]/2, self.LCOE_BC_9999)
+            _add_text(ax, 4+width/2, BC[4]/2, self.LCOE_BC_0)
+            _add_text(ax, 5+width/2, BC[5]/2, self.LCOE_BC_1)
             # Backup Energy Text
-            _add_text(ax, 0+width/2, BC[0] + BE[0]/2,self.LCOE_BE_0)
-            _add_text(ax, 1+width/2, BC[1] + BE[1]/2,self.LCOE_BE_1)
-            _add_text(ax, 2+width/2, BC[2] + BE[2]/2,self.LCOE_BE_2)
+            _add_text(ax, 0+width/2, BC[0] + BE[0]/2,self.LCOE_BE_2)
+            _add_text(ax, 1+width/2, BC[1] + BE[1]/2,self.LCOE_BE_9999)
+            _add_text(ax, 2+width/2, BC[2] + BE[2]/2,self.LCOE_BE_999)
             _add_text(ax, 3+width/2, BC[3] + BE[3]/2,self.LCOE_BE_99)
-            _add_text(ax, 4+width/2, BC[4] + BE[4]/2,self.LCOE_BE_999)
-            _add_text(ax, 5+width/2, BC[5] + BE[5]/2,self.LCOE_BE_9999)
+            _add_text(ax, 4+width/2, BC[4] + BE[4]/2,self.LCOE_BE_0)
+            _add_text(ax, 5+width/2, BC[5] + BE[5]/2,self.LCOE_BE_1)
             # Storage Charge Power Text
-            _add_text(ax, 0+width/2, BC[0] + BE[0] + SPCc[0]/2,self.LCOE_SPCc_0)
-            _add_text(ax, 1+width/2, BC[1] + BE[1] + SPCc[1]/2,self.LCOE_SPCc_1)
+            _add_text(ax, 4+width/2, BC[4] + BE[4] + SPCc[4]/2,self.LCOE_SPCc_0)
+            _add_text(ax, 5+width/2, BC[5] + BE[5] + SPCc[5]/2,self.LCOE_SPCc_1)
             # Storage Discharge Power Text
-            _add_text(ax, 0+width/2, BC[0] + BE[0] + SPCc[0] + SPCd[0]/2,self.LCOE_SPCd_0)
-            _add_text(ax, 1+width/2, BC[1] + BE[1] + SPCc[1] + SPCd[1]/2,self.LCOE_SPCd_1),
+            _add_text(ax, 4+width/2, BC[4] + BE[4] + SPCc[4] + SPCd[4]/2,self.LCOE_SPCd_0)
+            _add_text(ax, 5+width/2, BC[5] + BE[5] + SPCc[5] + SPCd[5]/2,self.LCOE_SPCd_1),
             # Totals Text
-            _add_text(ax, 0 + width/2, self.LCOE_B_0 + self.LCOE_S_0 + 0.1, self.LCOE_B_0 + self.LCOE_S_0),
-            _add_text(ax, 1 + width/2, self.LCOE_B_1 + self.LCOE_S_1 + 0.1, self.LCOE_B_1 + self.LCOE_S_1),
-            _add_text(ax, 2 + width/2, self.LCOE_B_2 + 0.1, self.LCOE_B_2)
+            _add_text(ax, 0 + width/2, self.LCOE_B_2 + 0.1, self.LCOE_B_2)
+            _add_text(ax, 1 + width/2, self.LCOE_B_9999 + 0.1, self.LCOE_B_9999)
+            _add_text(ax, 2 + width/2, self.LCOE_B_999 + 0.1, self.LCOE_B_999)
             _add_text(ax, 3 + width/2, self.LCOE_B_99 + 0.1, self.LCOE_B_99)
-            _add_text(ax, 4 + width/2, self.LCOE_B_999 + 0.1, self.LCOE_B_999)
-            _add_text(ax, 5 + width/2, self.LCOE_B_9999 + 0.1, self.LCOE_B_9999)
+            _add_text(ax, 4 + width/2, self.LCOE_B_0 + self.LCOE_S_0 + 0.1, self.LCOE_B_0 + self.LCOE_S_0),
+            _add_text(ax, 5 + width/2, self.LCOE_B_1 + self.LCOE_S_1 + 0.1, self.LCOE_B_1 + self.LCOE_S_1),
 
         plt.show()
         fig.savefig(s.figures_folder + 'stacked_LCOE.pdf')
