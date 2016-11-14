@@ -161,13 +161,15 @@ def storage_size(backup_without_storage,
                 S[t] = np.min((s, KSPc + S[t - 1]))
 
         # Calculate the new backup generation time series
-        if b > KB:
-            B_storage[t] = KB
-        else:
-            if np.abs(S[t]) > KB - b:
-                B_storage[t] = KB
-            else:
-                B_storage[t] = b + np.abs(S[t])
+        # if b > KB: # If backup generation is bigger than capacity
+        #     B_storage[t] = KB
+        # else: # Backup generation is lower than capacity
+        #     if np.abs(S[t]) > KB - b:
+        #         B_storage[t] = KB
+        #     else:
+        #         B_storage[t] = b + np.abs(S[t])
+
+        B_storage[t] = np.min((KB, b + np.abs(S[t])))
 
     # Storage energy capacity
     K_SE = S_max - np.min(S)

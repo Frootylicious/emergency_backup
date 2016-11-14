@@ -44,8 +44,9 @@ class LCOE_Objectives():
         self.print_costs()
 
     def plot_all(self):
-        self.plot_timeseries()
-        self.plot_bar()
+        # self.plot_timeseries()
+        self.plot_limited_timeseries()
+        # self.plot_bar()
 
     # Setting parameters for network.
     def set_network_parameters(self, a=0.80, g=1.00, b=0.70):
@@ -61,6 +62,12 @@ class LCOE_Objectives():
                                 eta_out=p.prices_storage_bussar.EfficiencyDischarge,
                                 add_curtailment=True,
                                 KSE=np.inf):
+                                # KSPc=np.inf,
+                                # KSPd=np.inf,
+                                # eta_in=1,
+                                # eta_out=1,
+                                # add_curtailment=False,
+                                # KSE=np.inf):
         self.KSPc = KSPc
         self.KSPd = KSPd
         self.eta_in = eta_in
@@ -97,7 +104,7 @@ class LCOE_Objectives():
         (self.S_max0, self.S0, self.Bs0) = t.storage_size(self.B, self.beta_b)
         # Constrained
         (self.S_max1, self.S1,self. Bs1) = t.storage_size(self.B, self.beta_b,
-                                           curtailment=self.C if self.add_curtailment else 0,
+                                           curtailment=self.C if self.add_curtailment else np.array(0),
                                            eta_in=self.eta_in,
                                            eta_out=self.eta_out,
                                            charging_capacity=self.KSPc*self.eta_in,
@@ -152,7 +159,7 @@ class LCOE_Objectives():
         self.LCOE_B_9999 = np.sum((self.LCOE_BC_9999 + self.LCOE_BE_9999))
 
     # Printing results -----------------------------------------------------------------------------
-    def print_objectives(self, only_constrained=True):
+    def print_objectives(self, only_constrained=False):
         def _get_objective_string(K_B, BE, K_SPc, K_SPd, K_SE, eta_in, eta_out):
             s0 = 'BC      = {0:.{prec}f}'.format(K_B, prec=self.decimals_objectives)
             s1 = 'BE      = {0:.{prec}f}'.format(BE, prec=self.decimals_objectives)
@@ -193,7 +200,7 @@ class LCOE_Objectives():
             s = '\n'.join(('\n', s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16))
         print(s)
 
-    def print_costs(self, only_constrained=True):
+    def print_costs(self, only_constrained=False):
         def _get_costs_string(LCOE_B, LCOE_S, LCOE_BC, LCOE_BE, LCOE_SPCc, LCOE_SPCd, LCOE_SEC):
             s0 = 'LCOE Total = {0:.{prec}f}'.format(LCOE_B + LCOE_S, prec=self.decimals_LCOE)
             s1 = 'LCOE B     = {0:.{prec}f}'.format(LCOE_B, prec=self.decimals_LCOE)
@@ -248,7 +255,7 @@ class LCOE_Objectives():
         ax.plot(range(len(self.B)), self.B, label=r'$G_n^B$')
         ax.plot(range(len(self.Bs0)), self.Bs0, label=r'Unconstrained $G_n^{{BS}}$')
         ax.plot(range(len(self.Bs1)), self.Bs1, label=r'Constrained $G_n^{{BS}}$')
-        ax.set_xlim(self.tt[0], self.tt[-1])
+
     # Strings for labels
         s01 = r'$\widetilde{{\eta}}^\mathrm{{in}} = {0:.2f}, \quad \widetilde{{\eta}}^\mathrm{{out}} = {1:.2f}$'
         s02 = r'$C = {2}$'
@@ -293,6 +300,31 @@ class LCOE_Objectives():
         plt.show()
         plt.close('all')
 
+    def plot_limited_timeseries(self):
+        linew = 1
+        xlim = [365*24+2*7*24+15, 365*24+3*7*24+12]
+        fig, (ax) = plt.subplots(1, 1)
+        length = len(self.S1)
+        rlength = range(length)
+        #ax.plot(rlength, [self.beta_b]*length, label='$\mathcal{{K}}^B={}$'.format(self.beta_b))
+        #ax.plot(rlength, self.S1, label='$S_n(t)$')
+        #ax.plot(range(len(self.S1)), self.S1)
+        ax.plot(rlength, self.B, 'gray', label=r'$G_n^B(t)$')
+        #ax.plot(rlength, self.Bs1, label=r'$G_n^{BS}(t)$')
+        # ax.plot(rlength, self.S1 - self.S0)
+
+        ax.set_xlim(xlim)
+        ax.set_ylim([-1, 1.5])
+
+        ax.set_xlabel(r'$t\, [h]$')
+        ax.set_ylabel(r'$\left[\langle L_n \rangle \right]$')
+        ax.legend(loc='upper center', ncol=4, fontsize=15)
+
+        fig.savefig(s.figures_folder + 'timeseries_limited0.pdf')
+
+        plt.show()
+        plt.close('all')
+
     def plot_bar(self, show_numbers=True):
         colors = sns.color_palette()
         index = np.arange(6)
@@ -300,30 +332,30 @@ class LCOE_Objectives():
         # Sequence: 100, 99.99, 99.9, 99, constrained, unconstrained.
         # 2, 9999, 999, 99, 0, 1
         BC = np.array([
-                       self.LCOE_BC_2, 
+                       self.LCOE_BC_2,
                        self.LCOE_BC_9999,
                        self.LCOE_BC_999,
                        self.LCOE_BC_99,
-                       self.LCOE_BC_0, 
-                       self.LCOE_BC_1, 
+                       self.LCOE_BC_0,
+                       self.LCOE_BC_1,
                        ])
         BE = np.array([
                        self.LCOE_BE_2,
                        self.LCOE_BE_9999,
                        self.LCOE_BE_999,
                        self.LCOE_BE_99,
-                       self.LCOE_BE_0, 
-                       self.LCOE_BE_1, 
+                       self.LCOE_BE_0,
+                       self.LCOE_BE_1,
                        ])
         SPCc = np.array([0, 0, 0, 0, self.LCOE_SPCc_0, self.LCOE_SPCc_1])
         SPCd = np.array([0, 0, 0, 0, self.LCOE_SPCd_0, self.LCOE_SPCd_1])
         SEC = np.array([0, 0, 0, 0, self.LCOE_SEC_0, self.LCOE_SEC_1])
         fig, (ax) = plt.subplots(1, 1)
-        p5 = ax.bar(index, SEC, width, bottom=BC+BE+SPCc+SPCd, color=colors[4], label='SEC')
-        p4 = ax.bar(index, SPCd, width, bottom=BC+BE+SPCc, color=colors[3], label='SPCd')
-        p3 = ax.bar(index, SPCc, width, bottom=BC+BE, color=colors[2], label='SPCc')
-        p2 = ax.bar(index, BE, width, bottom=BC, color=colors[1], label='BE')
-        p1 = ax.bar(index, BC, width, color=colors[0], label='BC')
+        p5 = ax.bar(index, SEC,  width, bottom=BC+BE+SPCc+SPCd, color=colors[4], label='SEC')
+        p4 = ax.bar(index, SPCd, width, bottom=BC+BE+SPCc,      color=colors[3], label='SPCd')
+        p3 = ax.bar(index, SPCc, width, bottom=BC+BE,           color=colors[2], label='SPCc')
+        p2 = ax.bar(index, BE,   width, bottom=BC,              color=colors[1], label='BE')
+        p1 = ax.bar(index, BC,   width,                         color=colors[0], label='BC')
         ax.set_ylabel(r'$€/MWh$')
         ax.xaxis.grid(False)
         plt.xticks(index + width/2., (
@@ -331,8 +363,8 @@ class LCOE_Objectives():
                                       'Without Storage\n 99.99 %',
                                       'Without Storage\n 99.9 %',
                                       'Without Storage\n99 %',
-                                      'Unconstrained Storage', 
-                                      'Constrained Storage', 
+                                      'Unconstrained Storage',
+                                      'Constrained Storage',
                                       ))
         labels = ('BC', 'BE', 'SPCc', 'SPCd', 'SEC')
         ax.legend(loc='best')
