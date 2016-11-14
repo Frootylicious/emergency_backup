@@ -417,3 +417,4 @@ class LCOE_Objectives():
         plt.close()
 
 L = LCOE_Objectives()
+print('')
