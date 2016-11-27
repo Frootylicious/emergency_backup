@@ -152,6 +152,7 @@ def storage_size(backup_without_storage,
             else:
                 s = np.min((S_max, S[t - 1] + (eta_out ** - 1) * K_C_B))
                 S[t] = np.max((s, KSPd + S[t - 1], KSE))
+            B_storage[t] = KB
         else: # If backup < capacity + curtailment = charging storage
             if t == 0:
                 s = np.min((S_max, (eta_in) * K_C_B))
@@ -159,6 +160,7 @@ def storage_size(backup_without_storage,
             else:
                 s = np.min((S_max, S[t - 1] + (eta_in) * K_C_B))
                 S[t] = np.min((s, KSPc + S[t - 1]))
+            B_storage[t] = np.min((KB, b + np.abs(S[t]), b + KSPc))
 
         # Calculate the new backup generation time series
         # if b > KB: # If backup generation is bigger than capacity
@@ -169,7 +171,7 @@ def storage_size(backup_without_storage,
         #     else:
         #         B_storage[t] = b + np.abs(S[t])
 
-        B_storage[t] = np.min((KB, b + np.abs(S[t])))
+#         B_storage[t] = np.min((KB, b + np.abs(S[t])))
 
     # Storage energy capacity
     K_SE = S_max - np.min(S)
@@ -369,19 +371,21 @@ def calculate_costs(BC, BE, SPC_c, SPC_d, SEC, L, prices_backup, prices_storage,
 
     # STORAGE --------------------------------------------------------------------------
     # Storage Power Capacity - charge.
-    SPC_c_costs = np.abs(SPC_c) * (prices_storage.CapPowerCharge +
+    SPC_c_costs = np.abs(SPC_c) * (prices_storage.CapCharge +
                                    _annualizationFactor(prices_storage.LifetimeCharge) *
-                                   prices_storage.OMPower) * 1e3
+                                   prices_storage.OMCharge) * 1e3
     # Storage Power Capacity - discharge.
-    SPC_d_costs = np.abs(SPC_d) * (prices_storage.CapPowerDischarge +
+    SPC_d_costs = np.abs(SPC_d) * (prices_storage.CapDischarge +
                                    _annualizationFactor(prices_storage.LifetimeDischarge) *
-                                   prices_storage.OMPower) * 1e3
+                                   prices_storage.OMDischarge) * 1e3
 
     # Total costs for the Power Capacity = Charge Capacity costs + Discharge Capacity costs.
     SPC_costs = SPC_c_costs + SPC_d_costs
 
     # Cost of steel tanks for storing hydrogen.
-    SEC_costs = SEC * prices_storage.CapStorage * 1e3
+    SEC_costs = SEC * (prices_storage.CapStorage +
+            _annualizationFactor(prices_storage.LifetimeStorage) * prices_storage.OMStorage) * 1e3
+#     SEC_costs = SEC * prices_storage.CapStorage * 1e3
 
     # Scaling factors.
     sf_backup = all_load / years * _annualizationFactor(prices_backup.Lifetime)
@@ -397,3 +401,31 @@ def calculate_costs(BC, BE, SPC_c, SPC_d, SEC, L, prices_backup, prices_storage,
     LCOE_SEC = SEC_costs / sf_storage_storage if sf_storage_storage != 0 else 0
 
     return(LCOE_BC, LCOE_BE, LCOE_SPC_c, LCOE_SPC_d, LCOE_SEC)
+
+def get_non_served_storage_energy(S0, S1, eta_in, eta_out):
+    '''
+    Function that calculates the hours not served by constraining the storage.
+
+    parameters:
+        S0:          array | The unconstrained storage filling level time series.
+        S1:          array | The constrained storage filling level time series.
+        eta_in:     number | The storage charging efficiency.
+        eta_out:    number | The storage discharging efficiency.
+    returns:
+        E_NS_timeseries: array | Time series of non-served storage energy.
+        E_NS_hours:     number | Count of number of hours with non-served storage energy.
+    '''
+    # Finding the difference between hours in storage filling level to determine the power needed.
+    diff0 = np.append(0, np.diff(S0)).clip(max=0)
+    diff1 = np.append(0, np.diff(S1)).clip(max=0)
+    # Taking care of efficiencies to compare.
+    diff1[diff1 < 0] *= eta_out  # Obsolete since we're only interested in discharging events
+    diff1[diff1 > 0] /= eta_in 
+    # Finding the difference between the two time series.
+    E_NS_timeseries = -(diff0 - diff1).clip(max=0)
+    # Setting very small differences to 0.
+    E_NS_timeseries[np.abs(E_NS_timeseries) < 1e-10] = 0
+    # Counting all non-zero hours.
+    E_NS_hours = np.count_nonzero(E_NS_timeseries)
+    return(E_NS_timeseries, E_NS_hours)
+

@@ -8,6 +8,7 @@ remote_ip      = '10.25.6.157'
 remote_folder  = '{0}:/home/kofoed/emergency_backup/'.format(remote_ip)
 remote_figures_folder = '10.25.6.157:/home/kofoed/emergency_backup/results/figures/'
 remote_figures = results_folder + 'remote_figures/'
+figure_size = (10, 4)
 
 iset_prefix    = 'ISET_country_'
 

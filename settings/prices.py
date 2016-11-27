@@ -3,14 +3,17 @@ from collections import namedtuple
 DOLLAR_TO_EURO = 0.7532 # David
 
 PriceStorage = namedtuple('PriceStorage', ['Name',
-                                           'CapPowerCharge',
-                                           'CapPowerDischarge',
-                                           'OMPower',
+                                           'CapCharge',
+                                           'CapDischarge',
+                                           'CapStorage',
+                                           'OMCharge',
+                                           'OMDischarge',
+                                           'OMStorage',
                                            'EfficiencyCharge',
                                            'EfficiencyDischarge',
+                                           'EfficiencyStorage',
                                            'LifetimeCharge',
                                            'LifetimeDischarge',
-                                           'CapStorage',
                                            'LifetimeStorage'])
 
 PriceBackup = namedtuple('PriceBackup', ['CapExFixed',
@@ -63,35 +66,38 @@ prices_backup_leon = PriceBackup(CapExFixed=0.9*1e6,            # €/kW
                                  OpExVariable=56,               # €/kWh/year
                                  Lifetime=30)                   # years
 
-prices_storage_david = PriceStorage(Name='David',
-                                    CapPowerCharge=737,         # €/kW
-                                    CapPowerDischarge=0,        # €/kW
-                                    OMPower=12.2,               # €/kW/year
-                                    EfficiencyCharge=0.75,      #
-                                    EfficiencyDischarge=0.58,   #
-                                    LifetimeCharge=20,          # years
-                                    LifetimeDischarge=0,        # years
-                                    CapStorage=11.2,            # €/kWh
-                                    LifetimeStorage=20)         # years
+# prices_storage_david = PriceStorage(Name='David',
+#                                     CapCharge=737,         # €/kW
+#                                     CapDischarge=0,        # €/kW
+#                                     OMPower=12.2,               # €/kW/year
+#                                     EfficiencyCharge=0.75,      #
+#                                     EfficiencyDischarge=0.58,   #
+#                                     LifetimeCharge=20,          # years
+#                                     LifetimeDischarge=0,        # years
+#                                     CapStorage=11.2,            # €/kWh
+#                                     LifetimeStorage=20)         # years
 
 prices_storage_bussar = PriceStorage(Name='Bussar',
-                                     CapPowerCharge=300,        # €/kW
-                                     CapPowerDischarge=400,     # €/kW
-                                     OMPower=0,                 # €/kW/year
+                                     CapCharge=300,             # €/kW
+                                     CapDischarge=400,          # €/kW
+                                     CapStorage=0.3,            # €/kWh
+                                     OMCharge=0.0015 * 300,     # €/kW/year
+                                     OMDischarge=0.0015 * 400,  # €/kW/year
+                                     OMStorage=0.0015 * 0.3,    # €/kW/year
                                      EfficiencyCharge=0.80,     #
                                      EfficiencyDischarge=0.62,  #
+                                     EfficiencyStorage=1,       #
                                      LifetimeCharge=15,         # years
-                                     LifetimeDischarge=15,      # years
-                                     CapStorage=0.3,            # €/kWh
-                                     LifetimeStorage=30)        # years
+                                     LifetimeDischarge=25,      # years
+                                     LifetimeStorage=40,)        # years
 
-prices_storage_scholz = PriceStorage(Name='Scholz',
-                                     CapPowerCharge=900,        # €/kW
-                                     CapPowerDischarge=0,       # €/kW
-                                     OMPower=0.03 * 900,        # €/kW/year
-                                     EfficiencyCharge=0.70,     #
-                                     EfficiencyDischarge=0.57,  #
-                                     LifetimeCharge=15,         # years
-                                     LifetimeDischarge=0,       # years
-                                     CapStorage=1,              # €/kWh
-                                     LifetimeStorage=30)        # years
+# prices_storage_scholz = PriceStorage(Name='Scholz',
+#                                      CapPowerCharge=900,        # €/kW
+#                                      CapPowerDischarge=0,       # €/kW
+#                                      OMPower=0.03 * 900,        # €/kW/year
+#                                      EfficiencyCharge=0.70,     #
+#                                      EfficiencyDischarge=0.57,  #
+#                                      LifetimeCharge=15,         # years
+#                                      LifetimeDischarge=0,       # years
+#                                      CapStorage=1,              # €/kWh
+#                                      LifetimeStorage=30)        # years

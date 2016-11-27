@@ -17,8 +17,9 @@ class LCOE_Objectives():
     def __init__(self):
         # Decimals.
         self.decimals_variables = 1
-        self.decimals_objectives = 2
-        self.decimals_LCOE = 3
+        self.decimals_objectives = 4
+        self.decimals_LCOE = 4
+        self.colors = sns.color_palette()
 
         # Do stuff.
         self.do_all()
@@ -26,16 +27,25 @@ class LCOE_Objectives():
     def do_all(self):
         self.set_all()
         self.calculate_all()
-        self.print_all()
+#         self.print_all()
         self.plot_all()
 
     def set_all(self):
         self.set_network_parameters()
-        self.set_storage_constraints()
+        self.set_storage_constraints(
+                                     KSPc=0.0014, # OPTIMAL VALUES
+#                                      KSPc=0.0012, 
+                                     KSPd=0.17, # OPTIMAL VALUES
+#                                      KSE=2.0,
+                                     eta_in=p.prices_storage_bussar.EfficiencyCharge,
+                                     eta_out=p.prices_storage_bussar.EfficiencyDischarge,
+                                     add_curtailment=True,
+                                    )
 
     def calculate_all(self):
         self.load_network()
         self.calculate_storage()
+        self.calculate_E_NS()
         self.get_objectives()
         self.calculate_LCOE()
 
@@ -45,8 +55,10 @@ class LCOE_Objectives():
 
     def plot_all(self):
         # self.plot_timeseries()
-        self.plot_limited_timeseries()
-        # self.plot_bar()
+#          self.plot_limited_timeseries()
+#         self.plot_bar()
+#         self.plot_single_bar()
+        return
 
     # Setting parameters for network.
     def set_network_parameters(self, a=0.80, g=1.00, b=0.70):
@@ -56,18 +68,13 @@ class LCOE_Objectives():
 
     # Setting constraints for storage.
     def set_storage_constraints(self,
-                                KSPc=0.06,
-                                KSPd=0.14,
-                                eta_in=p.prices_storage_bussar.EfficiencyCharge,
-                                eta_out=p.prices_storage_bussar.EfficiencyDischarge,
-                                add_curtailment=True,
-                                KSE=np.inf):
-                                # KSPc=np.inf,
-                                # KSPd=np.inf,
-                                # eta_in=1,
-                                # eta_out=1,
-                                # add_curtailment=False,
-                                # KSE=np.inf):
+                                KSE=np.inf,
+                                KSPc=np.inf,
+                                KSPd=np.inf,
+                                eta_in=1,
+                                eta_out=1,
+                                add_curtailment=False,
+                                ):
         self.KSPc = KSPc
         self.KSPd = KSPd
         self.eta_in = eta_in
@@ -101,20 +108,40 @@ class LCOE_Objectives():
 
     # Calculate storage and objectives -------------------------------------------------------------
     def calculate_storage(self):
+        # Unconstrained Storage
         (self.S_max0, self.S0, self.Bs0) = t.storage_size(self.B, self.beta_b)
-        # Constrained
+        # Constrained Storage
         (self.S_max1, self.S1,self. Bs1) = t.storage_size(self.B, self.beta_b,
-                                           curtailment=self.C if self.add_curtailment else np.array(0),
-                                           eta_in=self.eta_in,
-                                           eta_out=self.eta_out,
-                                           charging_capacity=self.KSPc*self.eta_in,
-                                           discharging_capacity=self.KSPd/self.eta_out,
-                                           energy_capacity=self.KSE,
-                                           )
+                                                          curtailment=self.C if self.add_curtailment else np.array(0),
+                                                          eta_in=self.eta_in,
+                                                          eta_out=self.eta_out,
+                                                          charging_capacity=self.KSPc*self.eta_in,
+                                                          discharging_capacity=self.KSPd/self.eta_out,
+                                                          energy_capacity=self.KSE,
+                                                          )
 
-        self.E_NS = -(self.S0 - self.S1).clip(max=0)
-        self.E_NS[np.abs(self.E_NS) < 1e-10] = 0
-        self.E_NS_hours = np.count_nonzero(self.E_NS)
+        # Find number of non served hours as a result of the constraints compared to the
+        # unconstrained storage.
+#         self.E_NS = -(self.S0 - self.S1).clip(max=0)
+#         self.E_NS[np.abs(self.E_NS) < 1e-10] = 0
+#         self.E_NS_hours = np.count_nonzero(self.E_NS)
+
+    def calculate_E_NS(self):
+        self.E_NS, self.E_NS_hours = t.get_non_served_storage_energy(self.S0, self.S1,
+                self.eta_in, self.eta_out)
+
+#         diff0 = np.append(0, np.diff(self.S0)).clip(max=0)
+#         diff1 = np.append(0, np.diff(self.S1)).clip(max=0)
+#         diff1[diff1 < 0] *= self.eta_out  # Obsolete since we're only interested in discharging events
+#         diff1[diff1 > 0] /= self.eta_in
+#         self.diff0 = diff0
+#         self.diff1 = diff1
+#         self.E_NS_timeseries = -(diff0 - diff1).clip(max=0)
+#         self.E_NS_timeseries[np.abs(self.E_NS_timeseries) < 1e-10] = 0
+#         self.E_NS_hours = np.count_nonzero(self.E_NS_timeseries)
+#         self.E_NS = self.E_NS_timeseries
+
+
 
     def get_objectives(self):
         # Unconstrained
@@ -139,6 +166,7 @@ class LCOE_Objectives():
         # Without storage - 100 % coverage.
         self.LCOE2 = t.calculate_costs(np.max(self.B), np.sum(self.B), 1, 1, 1, self.L_DE,
                                   p.prices_backup_leon, p.prices_storage_bussar)
+        sizes = [np.sum(self.Bs1), self.beta_b, self.K_SE1, self.K_SPc1, self.K_SPd1]
         (self.LCOE_BC_2, self.LCOE_BE_2) = self.LCOE2[:2]
         self.LCOE_B_2 = np.sum((self.LCOE_BC_2 + self.LCOE_BE_2))
 
@@ -255,6 +283,8 @@ class LCOE_Objectives():
         ax.plot(range(len(self.B)), self.B, label=r'$G_n^B$')
         ax.plot(range(len(self.Bs0)), self.Bs0, label=r'Unconstrained $G_n^{{BS}}$')
         ax.plot(range(len(self.Bs1)), self.Bs1, label=r'Constrained $G_n^{{BS}}$')
+        ax.plot(range(len(self.C)), self.C, label=r'C')
+        ax.plot(range(len(self.E_NS)), self.E_NS, 'k', label='Non-served storage energy $E^{NS, S}$')
 
     # Strings for labels
         s01 = r'$\widetilde{{\eta}}^\mathrm{{in}} = {0:.2f}, \quad \widetilde{{\eta}}^\mathrm{{out}} = {1:.2f}$'
@@ -270,14 +300,14 @@ class LCOE_Objectives():
     # Strings for objectives
         s11 = r'$\beta^B = {0}, \quad \alpha = {1}, \quad \gamma = {2}$'.format(self.beta_b, self.alpha, self.gamma)
         s12 = '\nUnconstrained: '
-        s13 = r'$\mathcal{{K}}^{{SPc}}={0:.2f},\quad \mathcal{{K}}^{{SPd}}={1:.2f}$'
-        s17 = r'$\mathcal{{K}}^{{SE}} = {0:.2f}$'
+        s13 = r'$\mathcal{{K}}^{{SPc}}={0:.3f},\quad \mathcal{{K}}^{{SPd}}={1:.3f}$'
+        s17 = r'$\mathcal{{K}}^{{SE}} = {0:.3f}$'
         s14 = '\nConstrained: '
         s15 = r'$E^{{NS}} = {0:.2f}$'.format(np.sum(self.E_NS))
         s181 = '\n Differences: '
-        s182 = r'$\Delta \mathcal{{K}}^{{SPc}} = {0:.2f}$'.format(self.K_SPc1 - self.K_SPc0)
-        s183 = r'$\Delta \mathcal{{K}}^{{SPd}} = {0:.2f}$'.format(self.K_SPd1 - self.K_SPd0)
-        s184 = r'$\Delta \mathcal{{K}}^{{SE}} = {0:.2f}$'.format(self.K_SE1 - self.K_SE0)
+        s182 = r'$\Delta \mathcal{{K}}^{{SPc}} = {0:.3f}$'.format(self.K_SPc1 - self.K_SPc0)
+        s183 = r'$\Delta \mathcal{{K}}^{{SPd}} = {0:.3f}$'.format(self.K_SPd1 - self.K_SPd0)
+        s184 = r'$\Delta \mathcal{{K}}^{{SE}} = {0:.3f}$'.format(self.K_SE1 - self.K_SE0)
         s16 = '\nNon-served hours: \n${0}/{1} = {2:.5f}$'.format(self.E_NS_hours, self.nhours, self.E_NS_hours/self.nhours)
     # Textbox for strings
         s1all = '\n'.join((s11, s12,
@@ -300,30 +330,104 @@ class LCOE_Objectives():
         plt.show()
         plt.close('all')
 
-    def plot_limited_timeseries(self):
+    def plot_curtailment_timeseries(self):
         linew = 1
-        xlim = [365*24+2*7*24+15, 365*24+3*7*24+12]
         fig, (ax) = plt.subplots(1, 1)
-        length = len(self.S1)
-        rlength = range(length)
-        #ax.plot(rlength, [self.beta_b]*length, label='$\mathcal{{K}}^B={}$'.format(self.beta_b))
-        #ax.plot(rlength, self.S1, label='$S_n(t)$')
-        #ax.plot(range(len(self.S1)), self.S1)
-        ax.plot(rlength, self.B, 'gray', label=r'$G_n^B(t)$')
-        #ax.plot(rlength, self.Bs1, label=r'$G_n^{BS}(t)$')
-        # ax.plot(rlength, self.S1 - self.S0)
+        ax.plot(range(len(self.S0)), self.S0, label=r'$S_n$ without $C$')
+        ax.plot(range(len(self.S1)), self.S1, label=r'$S_n$ with $C$')
+        ax.plot(range(len(self.Bs0)), self.Bs0, label=r'$G_n^{{BS}}$ without $C$')
+        ax.plot(range(len(self.Bs1)), self.Bs1, label=r'$G_n^{{BS}}$ with $C$')
+        ax.plot(range(len(self.C)), self.C, label=r'C')
 
-        ax.set_xlim(xlim)
-        ax.set_ylim([-1, 1.5])
-
-        ax.set_xlabel(r'$t\, [h]$')
+        ax.set_xlabel(r'$t [h]$')
         ax.set_ylabel(r'$\left[\langle L_n \rangle \right]$')
-        ax.legend(loc='upper center', ncol=4, fontsize=15)
-
-        fig.savefig(s.figures_folder + 'timeseries_limited0.pdf')
+        ax.set_xlim([53490, 53501])
+        ax.set_ylim([-3, 1])
+        ax.legend(loc='best', fontsize=12)
+        fig.savefig(s.figures_folder + 'curtailment_timeseries.pdf')
 
         plt.show()
         plt.close('all')
+
+    def plot_efficiencies_timeseries(self):
+        linew = 1
+        fig, (ax) = plt.subplots(1, 1)
+        ax.plot(range(len(self.S0)), self.S0, label=r'$S_n$ without $\eta$')
+        ax.plot(range(len(self.S1)), self.S1, label=r'$S_n$ with $\eta$')
+        ax.plot(range(len(self.Bs0)), self.Bs0, label=r'$G_n^{{BS}}$ without $\eta$')
+        ax.plot(range(len(self.Bs1)), self.Bs1, label=r'$G_n^{{BS}}$ with $\eta$')
+
+        ax.set_xlabel(r'$t [h]$')
+        ax.set_ylabel(r'$\left[\langle L_n \rangle \right]$')
+        ax.set_xlim([53360, 53485])
+        ax.set_ylim([-12, 1])
+        ax.legend(loc='best', fontsize=12)
+        fig.savefig(s.figures_folder + 'efficiencies_timeseries.pdf')
+
+        plt.show()
+        plt.close('all')
+
+    def plot_limited_timeseries(self):
+        colors = sns.color_palette()
+        linew = 1
+        xlim = [365*24+2*7*24+15, 365*24+3*7*24+12]
+        fig, (ax) = plt.subplots(1, 1, figsize=s.figure_size)
+        length = len(self.S1)
+        rlength = range(length)
+        ax.plot(rlength, self.S0, label='Unconstrained $S_n(t)$',color=colors[0])
+        ax.plot(rlength, self.S1, label='Constrained $S_n(t)$',color=colors[1])
+        ax.plot(rlength, self.B, 'gray', label=r'$G_n^B(t)$')
+        ax.plot(rlength, self.Bs0, label=r'Unconstrained $G_n^{BS}(t)$',color=colors[2])
+        ax.plot(rlength, self.Bs1, label=r'Constrained $G_n^{BS}(t)$',color=colors[3])
+#         ax.plot(rlength, self.S1 - self.S0)
+        ax.plot(rlength, [self.beta_b]*length, label='$\mathcal{{K}}^B={}$'.format(self.beta_b),color=colors[4])
+#         ax.plot(rlength, [-0.5]*length, label=r'$\mathcal{K}^{SE}_{\max}=-0.5$', color=colors[5])
+
+        ax.set_xlim(xlim)
+        ax.set_ylim([-1.5, 1.5])
+
+        ax.set_xlabel(r'$t\, [h]$')
+        ax.set_ylabel(r'$\left[\langle L_n \rangle \right]$')
+        ax.legend(loc='upper center', ncol=3, fontsize=12)
+
+
+#         name = 'timeseries_limited_constraints_KSE'
+#         name = 'timeseries_limited_constraints_KSPc'
+        name = 'timeseries_limited_constraints_KSPd'
+
+
+        fig.savefig(s.figures_folder + name + '.pdf')
+
+        plt.show()
+        plt.close('all')
+
+    def plot_single_bar(self):
+        colors = sns.color_palette()
+        fig, (ax) = plt.subplots(1, 1)
+        sizes = [
+                 self.LCOE_BC_1,
+                 self.LCOE_BE_1,
+                 self.LCOE_SPCc_1,
+                 self.LCOE_SPCd_1,
+                 self.LCOE_SEC_1,
+                 ]
+        labels = ['$\mathcal{K}^{B}$', '$E^B$', '$\mathcal{K}^{SPc}$', '$\mathcal{K}^{SPd}$', '$\mathcal{K}^{SE}$']
+
+#         patches, texts = plt.pie(sizes, colors=colors)
+#         plt.legend(patches, labels, loc="best")
+        plt.pie(sizes,              # data
+                labels=labels,      # slice labels
+                colors=colors,      # array of colours
+                autopct='%1.2f%%',  # print the values inside the wedges
+                startangle=90,       # starting angle
+	        labeldistance=0.9,
+        )
+
+        plt.axis('equal')
+        plt.show()
+        fig.savefig(s.figures_folder + 'single_bar.pdf')
+        plt.close('all')
+
 
     def plot_bar(self, show_numbers=True):
         colors = sns.color_palette()
@@ -350,7 +454,7 @@ class LCOE_Objectives():
         SPCc = np.array([0, 0, 0, 0, self.LCOE_SPCc_0, self.LCOE_SPCc_1])
         SPCd = np.array([0, 0, 0, 0, self.LCOE_SPCd_0, self.LCOE_SPCd_1])
         SEC = np.array([0, 0, 0, 0, self.LCOE_SEC_0, self.LCOE_SEC_1])
-        fig, (ax) = plt.subplots(1, 1)
+        fig, (ax) = plt.subplots(1, 1, figsize=s.figure_size)
         p5 = ax.bar(index, SEC,  width, bottom=BC+BE+SPCc+SPCd, color=colors[4], label='SEC')
         p4 = ax.bar(index, SPCd, width, bottom=BC+BE+SPCc,      color=colors[3], label='SPCd')
         p3 = ax.bar(index, SPCc, width, bottom=BC+BE,           color=colors[2], label='SPCc')
@@ -368,22 +472,22 @@ class LCOE_Objectives():
                                       ))
         labels = ('BC', 'BE', 'SPCc', 'SPCd', 'SEC')
         ax.legend(loc='best')
-        s00 = r'$\alpha = {0:.2f} \quad \gamma = {1:.2f} \quad \beta^B = {1:.2f}$'.format(self.alpha, self.gamma, self.beta_b)
+        s00 = r'$\alpha = {0:.2f} \quad \gamma = {1:.2f} \quad \beta^B = {2:.2f}$'.format(self.alpha, self.gamma, self.beta_b)
         s01 = (r'$\widetilde{{\eta}}^\mathrm{{in}} = {0:.{prec}f},'
                 '\quad \widetilde{{\eta}}^\mathrm{{out}} = {1:.{prec}f}$'.format(self.eta_in, self.eta_out, prec=2))
         s02 = (r'$\mathcal{{K}}^{{SPc}}={0:.{prec}f}, \mathcal{{K}}^{{SPd}}={1:.{prec}f}, '
                 '\mathcal{{K}}^{{SE}}={2:.{prec}f}$'.format(self.K_SPc1, self.K_SPd1, self.K_SE1, prec=4))
-        s03 = r'$E^{{NS}} = {0:.{prec}f}, \quad NS: {1:.0f}/{2:.0f}={3:.5f}$'.format(np.sum(self.E_NS),
-                self.E_NS_hours, self.nhours, self.E_NS_hours/self.nhours, prec=4)
+        s03 = r'$E^{{NS}} = {0:.{prec}f}, \quad NS: {1:.0f}/{2:.0f}={3:.5f}\%$'.format(np.sum(self.E_NS),
+                self.E_NS_hours, self.nhours, 100*self.E_NS_hours/self.nhours, prec=4)
         s0all = '\n'.join(('Constrained Storage Values:', s00, s01, s02, s03))
-        ax.text(5 + width/2, self.LCOE_B_1 + self.LCOE_S_1 + 1.0, s0all, ha='center', va='bottom',
-                bbox=dict(facecolor='None', edgecolor='k'))
+#         ax.text(5 + width/2, self.LCOE_B_1 + self.LCOE_S_1 + 1.0, s0all, ha='center', va='bottom',
+#                 bbox=dict(facecolor='None', edgecolor='k'))
 #         anchored_text0 = AnchoredText(s0all, loc=9, frameon=False)
 #         ax.add_artist(anchored_text0)
 
         if show_numbers:
             def _add_text(ax, x, y, v):
-                ax.text(x, y, '{0:.3f}'.format(v), va='center', ha='center')
+                ax.text(x, y, '{0:.4f}'.format(v), va='center', ha='center')
             # Backup Capacity Text
             _add_text(ax, 0+width/2, BC[0]/2, self.LCOE_BC_2)
             _add_text(ax, 1+width/2, BC[1]/2, self.LCOE_BC_9999)
@@ -416,5 +520,210 @@ class LCOE_Objectives():
         fig.savefig(s.figures_folder + 'stacked_LCOE.pdf')
         plt.close()
 
+
+    def capacity_test_KSE(self):
+        colors = sns.color_palette()
+        KSE_iter = np.linspace(7.0, 1.0, 61)
+        self.E_NS_list = np.empty_like(KSE_iter)
+        self.E_NS_hours_list = np.empty_like(KSE_iter)
+        for i, KSE in enumerate(tqdm(KSE_iter)):
+            self.set_storage_constraints(
+                                        KSE=KSE,
+                                        eta_in=p.prices_storage_bussar.EfficiencyCharge,
+                                        eta_out=p.prices_storage_bussar.EfficiencyDischarge,
+                                        add_curtailment=True,
+                                        )
+            self.calculate_storage()
+            self.get_objectives()
+            self.calculate_LCOE()
+            self.calculate_E_NS()
+            E_NS = np.sum(self.E_NS)
+            E_NS_hours = self.E_NS_hours
+
+            self.E_NS_list[i] = E_NS
+            self.E_NS_hours_list[i] = E_NS_hours
+
+        fig1, (ax1) = plt.subplots(1, 1, figsize=s.figure_size)
+        fig2, (ax2) = plt.subplots(1, 1, figsize=s.figure_size)
+        ax1.plot(KSE_iter, self.E_NS_list, label='$E^{NS, S}$')
+        ax1.invert_xaxis()
+        ax1.set_xlabel('$\mathcal{K}^{SE}$',fontsize=12)
+        ax1.set_ylabel(r'$[\langle L_n \rangle]$')
+        ax1.legend(loc='best',fontsize=12)
+        fig1.savefig(s.figures_folder + 'E_NS_vs_KSE.pdf')
+        ax2.invert_xaxis()
+        ax2.set_xlabel('$\mathcal{K}^{SE}$',fontsize=12)
+        ax2.set_ylabel(r'$\%$ of all hours')
+        ax2.plot(KSE_iter, 100*self.E_NS_hours_list/self.nhours, label='$\mathrm{Hours}(E^{NS, S}>0)$')
+        ax2.legend(loc='best', fontsize=12)
+        fig2.savefig(s.figures_folder + 'E_NS_hours_vs_KSE.pdf')
+        plt.show()
+
+        return
+
+    def capacity_test_KSPd(self):
+        colors = sns.color_palette()
+        KSPd_iter = np.linspace(0.5, 0, 1001)
+        self.E_NS_list = np.empty_like(KSPd_iter)
+        self.E_NS_hours_list = np.empty_like(KSPd_iter)
+        for i, KSPd in enumerate(tqdm(KSPd_iter)):
+            self.set_storage_constraints(KSPd=KSPd,
+                                        eta_in=p.prices_storage_bussar.EfficiencyCharge,
+                                        eta_out=p.prices_storage_bussar.EfficiencyDischarge,
+                                        add_curtailment=True,
+                                        )
+            self.calculate_storage()
+            self.get_objectives()
+            self.calculate_LCOE()
+            self.calculate_E_NS()
+            E_NS = np.sum(self.E_NS)
+            E_NS_hours = self.E_NS_hours
+
+            self.E_NS_list[i] = E_NS
+            self.E_NS_hours_list[i] = E_NS_hours
+
+        fig1, (ax1) = plt.subplots(1, 1, figsize=s.figure_size)
+        fig2, (ax2) = plt.subplots(1, 1, figsize=s.figure_size)
+        ax1.plot(KSPd_iter, self.E_NS_list, label='$E^{NS, S}$')
+        ax1.invert_xaxis()
+        ax1.set_xlabel('$\mathcal{K}^{SPd}_{\max}$',fontsize=12)
+        ax1.set_ylabel(r'$[\langle L_n \rangle]$')
+        ax1.legend(loc='best',fontsize=12)
+        fig1.savefig(s.figures_folder + 'E_NS_vs_KSPd.pdf')
+        ax2.invert_xaxis()
+        ax2.set_xlabel('$\mathcal{K}^{SPd}_{\max}$',fontsize=12)
+        ax2.set_ylabel(r'$\%$ of all hours')
+        ax2.semilogy(KSPd_iter, 100*self.E_NS_hours_list/self.nhours, label='$\mathrm{Hours}(E^{NS, S}>0)$')
+#         ax2.plot(KSPd_iter, 100*self.E_NS_hours_list/self.nhours, label='$\mathrm{Hours}(E^{NS, S}>0)$')
+        ax2.legend(loc='best', fontsize=12)
+        fig2.savefig(s.figures_folder + 'E_NS_hours_vs_KSPd.pdf')
+        plt.show()
+
+        return
+
+
+    def capacity_test_KSPc(self):
+        colors = sns.color_palette()
+        KSPc_iter = np.linspace(0.02, 0, 101)
+        self.BE_list = np.empty_like(KSPc_iter)
+        self.LCOE_list = np.empty_like(KSPc_iter)
+        for i, KSPc in enumerate(tqdm(KSPc_iter)):
+            self.set_storage_constraints(
+                                        KSPc=KSPc,
+                                        KSPd=0.17,
+                                        eta_in=p.prices_storage_bussar.EfficiencyCharge,
+                                        eta_out=p.prices_storage_bussar.EfficiencyDischarge,
+                                        add_curtailment=True,
+                                        )
+            self.calculate_storage()
+            self.get_objectives()
+            self.calculate_LCOE()
+
+            self.BE_list[i] = np.sum(self.Bs1)/8
+            self.LCOE_list[i] = np.sum(self.LCOE1)
+
+        fig1, (ax1) = plt.subplots(1, 1, figsize=s.figure_size)
+        ax1.plot(KSPc_iter, self.BE_list, label='$E^B/y$')
+        ax1.invert_xaxis()
+        ax1.set_xlabel('$\mathcal{K}^{SPc}_{\max}$',fontsize=12)
+        ax1.set_ylabel(r'$[\langle L_n \rangle]$')
+        ax1.legend(loc='best',fontsize=12)
+        ax1.set_xlim([KSPc_iter[0], KSPc_iter[-1]])
+        fig1.savefig(s.figures_folder + 'BE_vs_KSPc.pdf')
+        fig2, (ax2) = plt.subplots(1, 1, figsize=s.figure_size)
+        ax2.plot(KSPc_iter, self.LCOE_list, label='$LCOE$')
+        ax2.invert_xaxis()
+        ax2.set_xlabel('$\mathcal{K}^{SPc}_{\max}$',fontsize=12)
+        ax2.set_ylabel(r'$€$')
+        ax2.legend(loc='best',fontsize=12)
+        ax2.set_xlim([KSPc_iter[0], KSPc_iter[-1]])
+        fig2.savefig(s.figures_folder + 'LCOE_vs_KSPc.pdf')
+        plt.show()
+
+        return
+
+
+    def plot_no_storage_bars(self, show_numbers=True):
+        colors = sns.color_palette()
+        index = np.arange(4)
+        width = 0.5
+        # Sequence: 100, 99.99, 99.9, 99, constrained, unconstrained.
+        # 2, 9999, 999, 99, 0, 1
+        BC = np.array([
+                       self.LCOE_BC_2,
+                       self.LCOE_BC_9999,
+                       self.LCOE_BC_999,
+                       self.LCOE_BC_99,
+                       ])
+        BE = np.array([
+                       self.LCOE_BE_2,
+                       self.LCOE_BE_9999,
+                       self.LCOE_BE_999,
+                       self.LCOE_BE_99,
+                       ])
+        fig, (ax) = plt.subplots(1, 1, figsize=s.figure_size)
+        p2 = ax.bar(index, BE,   width, bottom=BC,              color=colors[1], label='BE')
+        p1 = ax.bar(index, BC,   width,                         color=colors[0], label='BC')
+        ax.set_ylabel(r'$€/MWh$')
+        ax.xaxis.grid(False)
+        plt.xticks(index + width/2., (
+                                      'Without Storage\n100 %',
+                                      'Without Storage\n 99.99 %',
+                                      'Without Storage\n 99.9 %',
+                                      'Without Storage\n99 %',
+                                      ))
+        labels = ('BC', 'BE')
+        ax.legend(loc='best')
+
+        if show_numbers:
+            def _add_text(ax, x, y, v):
+                ax.text(x, y, '{0:.3f}'.format(v), va='center', ha='center')
+            # Backup Capacity Text
+            _add_text(ax, 0+width/2, BC[0]/2, self.LCOE_BC_2)
+            _add_text(ax, 1+width/2, BC[1]/2, self.LCOE_BC_9999)
+            _add_text(ax, 2+width/2, BC[2]/2, self.LCOE_BC_999)
+            _add_text(ax, 3+width/2, BC[3]/2, self.LCOE_BC_99)
+            # Backup Energy Text
+            _add_text(ax, 0+width/2, BC[0] + BE[0]/2,self.LCOE_BE_2)
+            _add_text(ax, 1+width/2, BC[1] + BE[1]/2,self.LCOE_BE_9999)
+            _add_text(ax, 2+width/2, BC[2] + BE[2]/2,self.LCOE_BE_999)
+            _add_text(ax, 3+width/2, BC[3] + BE[3]/2,self.LCOE_BE_99)
+            # Storage Charge Power Text
+            # Totals Text
+            _add_text(ax, 0 + width/2, self.LCOE_B_2 + 0.1, self.LCOE_B_2)
+            _add_text(ax, 1 + width/2, self.LCOE_B_9999 + 0.1, self.LCOE_B_9999)
+            _add_text(ax, 2 + width/2, self.LCOE_B_999 + 0.1, self.LCOE_B_999)
+            _add_text(ax, 3 + width/2, self.LCOE_B_99 + 0.1, self.LCOE_B_99)
+
+        plt.show()
+        fig.savefig(s.figures_folder + 'stacked_LCOE_no_storage.pdf')
+        plt.close()
+
+    def plot_final_timeseries(self):
+        linew = 1
+        fig, (ax) = plt.subplots(1, 1, figsize=s.figure_size)
+        tt = range(len(self.S0))
+        ax.plot(tt, self.S0, label='Unconstrained $S_n(t)$', color=self.colors[0])
+        ax.plot(tt, self.S1, label='Constrained $S_n(t)$', color=self.colors[1])
+#         ax.plot(tt, self.B, label=r'$G_n^B(t)$', color=self.colors[2])
+#         ax.plot(tt, self.Bs0, label=r'Unconstrained $G_n^{{BS}}(t)$',
+#                 color=self.colors[3])
+#         ax.plot(tt, self.Bs1, label=r'Constrained $G_n^{{BS}}(t)$',
+#                 color=self.colors[4])
+#         ax.plot(tt, self.C, label=r'C', color=self.colors[4])
+        ax.plot(tt, self.E_NS, 'k', label='Non-served storage energy $E^{NS,S}(t)$', color='k')
+
+    # Strings for labels
+        ax.legend(loc='best', fontsize=12)
+
+        ax.set_xlabel(r'$t [y]$')
+        ax.set_ylabel(r'$\left[\langle L_n \rangle \right]$')
+        ax.set_xlim(self.tt[0], self.tt[-1])
+        ax.set_xticks(np.linspace(ax.get_xlim()[0], ax.get_xlim()[-1], 9))
+        ax.set_xticklabels(range(0, 9))
+        fig.savefig(s.figures_folder + 'storage_final.pdf')
+
+        plt.show()
+        plt.close('all')
+
 L = LCOE_Objectives()
-print('')
